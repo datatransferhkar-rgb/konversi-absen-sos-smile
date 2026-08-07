@@ -128,6 +128,7 @@ function convertSchedules(importedScheduleData, legends) {
             converted.push({
                 Date: formatDateForSystem(entry.tanggal),
                 EmployeeNIK: entry.nik,
+                EmployeeNama: entry.nama || '-',
                 ScheduleCode: scheduleCode,
                 originalCode: entry.kode
             });

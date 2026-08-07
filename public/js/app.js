@@ -3,8 +3,8 @@ let projectsState = [];
 let activeProject = null;
 let legendsState = [];
 let importedScheduleData = []; // [{ nik, nama, tanggal, kode }]
-let convertedData = [];         // [{ Date, EmployeeNIK, ScheduleCode }]
-let savedSchedulesHistory = []; // [{ date, nik, code, converted_code }]
+let convertedData = [];         // [{ Date, EmployeeNIK, EmployeeNama, ScheduleCode }]
+let savedSchedulesHistory = []; // [{ date, nik, name, code, converted_code }]
 
 // Manual Grid State
 let currentManualYear = '';
@@ -509,12 +509,14 @@ function renderSavedHistoryTable() {
         tr.className = 'hover:bg-slate-50 transition';
         const dateDisplay = item.date || item.Date;
         const nikDisplay = item.nik || item.EmployeeNIK;
+        const namaDisplay = item.name || item.EmployeeNama || item.nama || '-';
         const codeDisplay = item.code || item.originalCode || '-';
         const convertedDisplay = item.converted_code || item.ScheduleCode;
 
         tr.innerHTML = `
             <td class="px-4 py-2 border-r border-slate-100 font-medium text-slate-700">${dateDisplay}</td>
             <td class="px-4 py-2 border-r border-slate-100 font-semibold text-slate-800">${nikDisplay}</td>
+            <td class="px-4 py-2 border-r border-slate-100 text-slate-700 font-semibold">${namaDisplay}</td>
             <td class="px-4 py-2 border-r border-slate-100 font-mono font-bold text-slate-600">${codeDisplay}</td>
             <td class="px-4 py-2 font-mono font-bold text-emerald-700">${convertedDisplay}</td>
         `;
@@ -641,7 +643,7 @@ function getShiftOptionsHTML(selectedCode = '') {
     return optionsHtml;
 }
 
-// Manual Calendar Matrix Grid (With History Edit Support)
+// Manual Calendar Matrix Grid (With History Edit Support & Name Retention)
 function initManualGrid() {
     const monthPicker = document.getElementById('manualMonthPicker');
     const gridBtn = document.getElementById('btnBuildManualGrid');
@@ -677,11 +679,11 @@ function initManualGrid() {
     });
 
     if (monthHistory && monthHistory.length > 0) {
-        // Group by Employee NIK
+        // Group by Employee NIK while preserving employee Name!
         const employeeMap = new Map();
         monthHistory.forEach(item => {
             const nik = String(item.nik || item.EmployeeNIK).trim();
-            const nama = item.name || item.EmployeeNama || '-';
+            const nama = item.name || item.EmployeeNama || item.nama || '';
             const code = item.code || item.originalCode || '';
             const dStr = item.date || item.Date;
 
@@ -692,14 +694,19 @@ function initManualGrid() {
             if (!employeeMap.has(nik)) {
                 employeeMap.set(nik, { nik, nama, shifts: {} });
             }
+            if (nama && nama !== '-' && employeeMap.get(nik).nama === '-') {
+                employeeMap.get(nik).nama = nama;
+            }
+
             if (dayNum >= 1 && dayNum <= manualDaysCount) {
                 employeeMap.get(nik).shifts[dayNum] = code;
             }
         });
 
-        // Populate rows with existing saved schedules
+        // Populate rows with existing saved schedules and employee names
         employeeMap.forEach(emp => {
-            addManualRowWithData(emp.nik, emp.nama, emp.shifts);
+            const displayNama = (emp.nama && emp.nama !== '-') ? emp.nama : '';
+            addManualRowWithData(emp.nik, displayNama, emp.shifts);
         });
 
         if (gridBtn) gridBtn.innerHTML = `✏️ Tampilkan & Edit Jadwal (Bulan Ini)`;
@@ -935,11 +942,12 @@ async function saveToSQLite() {
         let newCount = 0;
         let updateCount = 0;
 
-        // Perform intelligent upsert against savedSchedulesHistory
+        // Perform intelligent upsert against savedSchedulesHistory while preserving employee name
         const historyCopy = [...savedSchedulesHistory];
 
         convertedData.forEach(item => {
             const itemNik = String(item.EmployeeNIK).trim();
+            const itemNama = item.EmployeeNama || item.nama || item.name || '-';
             const itemDate = normalizeDateStr(item.Date);
 
             const existingIdx = historyCopy.findIndex(h => {
@@ -950,13 +958,17 @@ async function saveToSQLite() {
 
             const newItemObj = {
                 nik: item.EmployeeNIK,
-                name: '-',
+                name: itemNama,
                 date: item.Date,
                 code: item.originalCode || 'P',
                 converted_code: item.ScheduleCode
             };
 
             if (existingIdx >= 0) {
+                // If existing record had name '-' and new item has actual name, preserve actual name!
+                if (historyCopy[existingIdx].name && historyCopy[existingIdx].name !== '-' && itemNama === '-') {
+                    newItemObj.name = historyCopy[existingIdx].name;
+                }
                 historyCopy[existingIdx] = newItemObj;
                 updateCount++;
             } else {
