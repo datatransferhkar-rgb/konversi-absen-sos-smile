@@ -4,6 +4,7 @@ let activeProject = null;
 let legendsState = [];
 let importedScheduleData = []; // [{ nik, nama, tanggal, kode }]
 let convertedData = [];         // [{ Date, EmployeeNIK, ScheduleCode }]
+let savedSchedulesHistory = []; // [{ date, nik, code, converted_code }]
 
 // Manual Grid State
 let currentManualYear = '';
@@ -306,6 +307,9 @@ async function openModalInputJadwal(projectId) {
     renderResultTable();
 
     await loadLegends();
+    await loadSavedSchedulesHistory();
+
+    switchSubTab('upload');
 
     const modal = document.getElementById('modalInputJadwal');
     if (!modal) return;
@@ -333,39 +337,135 @@ function closeModalInputJadwal() {
 function switchSubTab(tabId) {
     const tabUpload = document.getElementById('tabContentUpload');
     const tabManual = document.getElementById('tabContentManual');
+    const tabHistory = document.getElementById('tabContentHistory');
+
     const btnUpload = document.getElementById('btnTabUpload');
     const btnManual = document.getElementById('btnTabManual');
+    const btnHistory = document.getElementById('btnTabHistory');
 
-    if (!tabUpload || !tabManual) return;
+    if (!tabUpload || !tabManual || !tabHistory) return;
+
+    // Hide all sub tab contents
+    tabUpload.classList.add('hidden');
+    tabUpload.classList.remove('block');
+
+    tabManual.classList.add('hidden');
+    tabManual.classList.remove('block');
+
+    tabHistory.classList.add('hidden');
+    tabHistory.classList.remove('block');
+
+    // Reset button styles
+    [btnUpload, btnManual, btnHistory].forEach(btn => {
+        if (btn) {
+            btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-bold');
+            btn.classList.add('border-transparent', 'text-slate-500', 'font-semibold');
+        }
+    });
 
     if (tabId === 'upload') {
         tabUpload.classList.remove('hidden');
         tabUpload.classList.add('block');
-        tabManual.classList.remove('block');
-        tabManual.classList.add('hidden');
-
         if (btnUpload) {
-            btnUpload.classList.add('border-indigo-600', 'text-indigo-600');
-            btnUpload.classList.remove('border-transparent', 'text-slate-500');
+            btnUpload.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+            btnUpload.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
         }
-        if (btnManual) {
-            btnManual.classList.remove('border-indigo-600', 'text-indigo-600');
-            btnManual.classList.add('border-transparent', 'text-slate-500');
-        }
-    } else {
+    } else if (tabId === 'manual') {
         tabManual.classList.remove('hidden');
         tabManual.classList.add('block');
-        tabUpload.classList.remove('block');
-        tabUpload.classList.add('hidden');
-
         if (btnManual) {
-            btnManual.classList.add('border-indigo-600', 'text-indigo-600');
-            btnManual.classList.remove('border-transparent', 'text-slate-500');
+            btnManual.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+            btnManual.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
         }
-        if (btnUpload) {
-            btnUpload.classList.remove('border-indigo-600', 'text-indigo-600');
-            btnUpload.classList.add('border-transparent', 'text-slate-500');
+    } else if (tabId === 'history') {
+        tabHistory.classList.remove('hidden');
+        tabHistory.classList.add('block');
+        if (btnHistory) {
+            btnHistory.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+            btnHistory.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
         }
+        loadSavedSchedulesHistory();
+    }
+}
+
+async function loadSavedSchedulesHistory() {
+    if (!activeProject) return;
+    try {
+        const history = await ApiService.getSchedules(activeProject.id);
+        savedSchedulesHistory = history || [];
+        renderSavedHistoryTable();
+    } catch (err) {
+        console.error('Error loading saved schedules history:', err);
+    }
+}
+
+function renderSavedHistoryTable() {
+    const tbody = document.getElementById('savedHistoryTableBody');
+    const emptyMsg = document.getElementById('emptyHistoryMsg');
+    const badge = document.getElementById('savedHistoryCountBadge');
+
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (badge) badge.textContent = `${savedSchedulesHistory.length} Data Tersimpan`;
+
+    if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) {
+        if (emptyMsg) emptyMsg.classList.remove('hidden');
+        return;
+    }
+
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+
+    savedSchedulesHistory.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        const dateDisplay = item.date || item.Date;
+        const nikDisplay = item.nik || item.EmployeeNIK;
+        const codeDisplay = item.code || item.originalCode || '-';
+        const convertedDisplay = item.converted_code || item.ScheduleCode;
+
+        tr.innerHTML = `
+            <td class="px-4 py-2 border-r border-slate-100 font-medium text-slate-700">${dateDisplay}</td>
+            <td class="px-4 py-2 border-r border-slate-100 font-semibold text-slate-800">${nikDisplay}</td>
+            <td class="px-4 py-2 border-r border-slate-100 font-mono font-bold text-slate-600">${codeDisplay}</td>
+            <td class="px-4 py-2 font-mono font-bold text-emerald-700">${convertedDisplay}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function exportSavedHistoryExcel() {
+    if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) {
+        showModal('Peringatan', 'Tidak ada riwayat data tersimpan yang dapat diexport.');
+        return;
+    }
+
+    const formattedData = savedSchedulesHistory.map(item => ({
+        Date: item.date || item.Date,
+        EmployeeNIK: item.nik || item.EmployeeNIK,
+        ScheduleCode: item.converted_code || item.ScheduleCode
+    }));
+
+    generateExcelFile(formattedData, activeProject ? activeProject.name + '_Riwayat' : 'Riwayat_Jadwal');
+}
+
+async function clearSavedHistory() {
+    if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) {
+        showModal('Peringatan', 'Belum ada riwayat data tersimpan.');
+        return;
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus seluruh riwayat data jadwal tersimpan untuk project '${activeProject.name}'?`)) {
+        return;
+    }
+
+    try {
+        await ApiService.saveSchedules(activeProject.id, [], true);
+        savedSchedulesHistory = [];
+        renderSavedHistoryTable();
+        showModal('Sukses', 'Riwayat data jadwal tersimpan berhasil dibersihkan.');
+    } catch (err) {
+        showModal('Error', err.message || 'Gagal menghapus riwayat.');
     }
 }
 
@@ -635,7 +735,8 @@ async function saveToSQLite() {
         }));
 
         await ApiService.saveSchedules(activeProject ? activeProject.id : 1, items, true);
-        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject ? activeProject.name : ''}!`);
+        await loadSavedSchedulesHistory();
+        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject ? activeProject.name : ''}! Silakan cek di tab 'Riwayat Data Tersimpan'.`);
     } catch (err) {
         showModal('Error Database', err.message || 'Gagal menyimpan data.');
     }

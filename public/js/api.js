@@ -215,7 +215,31 @@ const ApiService = {
         return { message: 'Legend deleted' };
     },
 
-    // 7. Save Schedules Batch
+    // 7. Fetch Saved Schedules for a Project
+    async getSchedules(projectId) {
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/schedules`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.data) return data.data;
+                }
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
+            }
+        }
+
+        // LocalStorage Fallback
+        try {
+            let items = JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULES + projectId));
+            return items || [];
+        } catch (e) {
+            console.error('Error reading localStorage schedules:', e);
+            return [];
+        }
+    },
+
+    // 8. Save Schedules Batch
     async saveSchedules(projectId, items, clearExisting = true) {
         if (isLocalhostServer()) {
             try {
