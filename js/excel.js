@@ -102,57 +102,39 @@ function formatDateForSystem(dateStr) {
     return str;
 }
 
-// Default Fallback Shift Types
-const DEFAULT_FALLBACK_LEGENDS = [
-    { code: 'P', time_in: '07:00', time_out: '15:00' },
-    { code: 'M', time_in: '15:00', time_out: '23:00' },
-    { code: 'L', time_in: '23:00', time_out: '07:00' },
-    { code: 'P8', time_in: '08:00', time_out: '15:00' },
-    { code: 'P9', time_in: '09:00', time_out: '16:00' },
-    { code: 'OFF', time_in: '00:00', time_out: '00:00' },
-    { code: 'LIBUR', time_in: '00:00', time_out: '00:00' },
-    { code: 'LBR', time_in: '00:00', time_out: '00:00' }
-];
-
 function convertSchedules(importedScheduleData, legends) {
     const converted = [];
     const errors = [];
 
-    // Combine project-specific legends with default fallback legends
-    const activeLegends = (legends && legends.length > 0) ? legends : DEFAULT_FALLBACK_LEGENDS;
+    // Strict validation against registered project legends
+    if (!legends || legends.length === 0) {
+        return {
+            converted: [],
+            errors: ['Project ini belum memiliki Tipe Shift terdaftar. Silakan kelola Tipe Shift terlebih dahulu.']
+        };
+    }
 
     importedScheduleData.forEach((entry, index) => {
         const inputCode = String(entry.kode || '').trim().toUpperCase();
 
-        // 1. Search in project legends
-        let legend = activeLegends.find(l => String(l.code).toUpperCase() === inputCode);
-
-        // 2. If not found in project legends, search in default fallback legends
-        if (!legend) {
-            legend = DEFAULT_FALLBACK_LEGENDS.find(l => String(l.code).toUpperCase() === inputCode);
-        }
-
-        let scheduleCode = '';
+        // Search STRICTLY in project-registered shift types
+        const legend = legends.find(l => String(l.code).toUpperCase() === inputCode);
 
         if (legend) {
             const inTimeRaw = String(legend.time_in || '07:00').replace(':', '');
             const outTimeRaw = String(legend.time_out || '15:00').replace(':', '');
-            scheduleCode = `S${inTimeRaw}${outTimeRaw}`;
-        } else if (inputCode.startsWith('S') && inputCode.length >= 7) {
-            // Already formatted system code (e.g. S07001500)
-            scheduleCode = inputCode;
-        } else {
-            // Fallback for custom undefined shift codes so NO DATA IS DROPPED!
-            scheduleCode = `S_${inputCode}`;
-            errors.push(`Shift '${inputCode}' tidak ada di legenda (dikonversi otomatis sebagai ${scheduleCode}).`);
-        }
+            const scheduleCode = `S${inTimeRaw}${outTimeRaw}`;
 
-        converted.push({
-            Date: formatDateForSystem(entry.tanggal),
-            EmployeeNIK: entry.nik,
-            ScheduleCode: scheduleCode,
-            originalCode: entry.kode
-        });
+            converted.push({
+                Date: formatDateForSystem(entry.tanggal),
+                EmployeeNIK: entry.nik,
+                ScheduleCode: scheduleCode,
+                originalCode: entry.kode
+            });
+        } else {
+            // Reject entry if shift code is not registered in project's shift types
+            errors.push(`Baris ${index + 1} (NIK: ${entry.nik}, Tgl: ${entry.tanggal}): Kode Shift '${entry.kode}' tidak ada di Tipe Jadwal Project.`);
+        }
     });
 
     // Sort by Date then NIK for clean ordering

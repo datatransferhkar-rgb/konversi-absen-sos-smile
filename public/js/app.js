@@ -227,11 +227,7 @@ async function loadLegends() {
                 time_out: l.time_out || l.out || '15:00'
             }));
         } else {
-            legendsState = [
-                { code: 'P', time_in: '07:00', time_out: '15:00' },
-                { code: 'M', time_in: '15:00', time_out: '23:00' },
-                { code: 'L', time_in: '23:00', time_out: '07:00' }
-            ];
+            legendsState = [];
         }
         renderLegendTable();
         renderQuickLegend();
@@ -246,7 +242,7 @@ function renderLegendTable() {
     tbody.innerHTML = '';
 
     if (legendsState.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400 text-xs">Belum ada tipe shift untuk project ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400 text-xs font-semibold">⚠️ Belum ada Tipe Shift untuk project ini. Tambahkan di form samping.</td></tr>`;
         return;
     }
 
@@ -270,7 +266,7 @@ function renderQuickLegend() {
     const containerInput = document.getElementById('quickLegendInputJadwal');
 
     const htmlContent = legendsState.length === 0
-        ? `<span class="text-indigo-900 font-bold flex-shrink-0">Shift Default Active:</span> <span class="bg-white border border-indigo-200/80 px-2 py-0.5 rounded text-slate-700 font-mono text-[11px]">P, M, L (Default System)</span>`
+        ? `<span class="text-rose-600 font-bold flex items-center gap-1">⚠️ Belum Ada Tipe Shift Terdaftar Pada Project Ini. Silakan Klik "📋 Tipe Jadwal".</span>`
         : `<strong class="text-indigo-900 font-bold flex-shrink-0">Shift Tersedia:</strong> ` +
           legendsState.map(l => 
             `<span class="bg-white border border-indigo-200/80 px-2.5 py-0.5 rounded-lg shadow-sm text-slate-800 font-mono text-[11px] font-semibold">
@@ -415,6 +411,7 @@ function switchSubTab(tabId) {
             btnManual.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
             btnManual.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
         }
+        initManualGrid(); // Auto load grid or existing history for selected month
     } else if (tabId === 'history') {
         tabHistory.classList.remove('hidden');
         tabHistory.classList.add('block');
@@ -621,7 +618,7 @@ async function handleFileUpload(event) {
             else newCount++;
         });
 
-        showModal('Berhasil Membaca File Excel', `Memuat ${importedScheduleData.length} slot jadwal dari file Excel (${file.name}).\n\n📌 Hasil Pengecekan Riwayat:\n• Data Baru: ${newCount} slot\n• Update Data (Sudah Ada di Riwayat): ${updateCount} slot\n\nKlik "⚡ Proses Konversi" lalu "💾 Simpan Ke Riwayat".`);
+        showModal('Berhasil Membaca File Excel', `Memuat ${importedScheduleData.length} slot jadwal dari file Excel (${file.name}).\n\n📌 Hasil Pengecekan Riwayat:\n• Data Baru: ${newCount} slot\n• Update Data (Sudah Ada di Riwayat): ${updateCount} slot\n\nKlik "⚡ Proses Konversi" untuk memvalidasi tipe shift.`);
     } catch (err) {
         console.error('Upload Error:', err);
         showModal('Error', 'Terjadi kesalahan saat membaca file Excel.');
@@ -630,29 +627,33 @@ async function handleFileUpload(event) {
     event.target.value = '';
 }
 
-// Helper to generate select dropdown options based on registered shift types in legendsState
-function getShiftOptionsHTML() {
+// Helper to generate select dropdown options strictly from registered shift types in legendsState
+function getShiftOptionsHTML(selectedCode = '') {
     let optionsHtml = `<option value="">-</option>`;
     if (legendsState && legendsState.length > 0) {
         legendsState.forEach(l => {
-            optionsHtml += `<option value="${l.code}">${l.code} (${l.time_in}-${l.time_out})</option>`;
+            const isSel = String(l.code).toUpperCase() === String(selectedCode).toUpperCase() ? 'selected' : '';
+            optionsHtml += `<option value="${l.code}" ${isSel}>${l.code} (${l.time_in}-${l.time_out})</option>`;
         });
     } else {
-        // Fallback default options
-        optionsHtml += `<option value="P">P (07:00-15:00)</option>`;
-        optionsHtml += `<option value="M">M (15:00-23:00)</option>`;
-        optionsHtml += `<option value="L">L (23:00-07:00)</option>`;
+        optionsHtml = `<option value="">⚠️ Tambah Tipe Shift Dahulu</option>`;
     }
     return optionsHtml;
 }
 
-// Manual Calendar Matrix Grid
+// Manual Calendar Matrix Grid (With History Edit Support)
 function initManualGrid() {
     const monthPicker = document.getElementById('manualMonthPicker');
+    const gridBtn = document.getElementById('btnBuildManualGrid');
     if (!monthPicker) return;
     const monthInput = monthPicker.value;
     if (!monthInput) {
         showModal('Peringatan', 'Silakan pilih bulan dan tahun terlebih dahulu.');
+        return;
+    }
+
+    if (!legendsState || legendsState.length === 0) {
+        showModal('Peringatan Tipe Shift', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki Tipe Shift terdaftar. Silakan tambahkan Tipe Shift terlebih dahulu pada tombol "📋 Tipe Jadwal".`);
         return;
     }
 
@@ -667,9 +668,49 @@ function initManualGrid() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    addManualRow();
-    addManualRow();
-    addManualRow();
+    // Check if saved history for active project contains data for this selected month!
+    const targetPeriodKey = `${year}-${month}`;
+    const monthHistory = savedSchedulesHistory.filter(item => {
+        const dStr = item.date || item.Date;
+        const info = getPeriodInfo(dStr);
+        return info.key === targetPeriodKey;
+    });
+
+    if (monthHistory && monthHistory.length > 0) {
+        // Group by Employee NIK
+        const employeeMap = new Map();
+        monthHistory.forEach(item => {
+            const nik = String(item.nik || item.EmployeeNIK).trim();
+            const nama = item.name || item.EmployeeNama || '-';
+            const code = item.code || item.originalCode || '';
+            const dStr = item.date || item.Date;
+
+            // Extract day number (e.g. 1-31)
+            const dObj = new Date(dStr);
+            let dayNum = !isNaN(dObj.getTime()) ? dObj.getDate() : parseInt(String(dStr).split(/[\/\-]/)[1]);
+
+            if (!employeeMap.has(nik)) {
+                employeeMap.set(nik, { nik, nama, shifts: {} });
+            }
+            if (dayNum >= 1 && dayNum <= manualDaysCount) {
+                employeeMap.get(nik).shifts[dayNum] = code;
+            }
+        });
+
+        // Populate rows with existing saved schedules
+        employeeMap.forEach(emp => {
+            addManualRowWithData(emp.nik, emp.nama, emp.shifts);
+        });
+
+        if (gridBtn) gridBtn.innerHTML = `✏️ Tampilkan & Edit Jadwal (Bulan Ini)`;
+    } else {
+        // Render 3 empty default rows
+        addManualRow();
+        addManualRow();
+        addManualRow();
+
+        if (gridBtn) gridBtn.innerHTML = `+ Buat Grid Kalender Baru`;
+    }
 
     const container = document.getElementById('manualGridContainer');
     if (container) container.classList.remove('hidden');
@@ -695,6 +736,10 @@ function renderManualGridHeaders() {
 }
 
 function addManualRow() {
+    addManualRowWithData('', '', {});
+}
+
+function addManualRowWithData(nikVal = '', namaVal = '', shiftsObj = {}) {
     const tbody = document.getElementById('manualGridBody');
     if (!tbody) return;
     const tr = document.createElement('tr');
@@ -702,20 +747,21 @@ function addManualRow() {
 
     let html = `
         <td class="p-1 min-w-[120px] sticky-col-left-1 border-r border-slate-200">
-            <input type="text" class="w-full bg-white border border-slate-200 focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1 text-xs font-semibold manual-nik" placeholder="123456">
+            <input type="text" value="${nikVal}" class="w-full bg-white border border-slate-200 focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1 text-xs font-semibold manual-nik" placeholder="123456">
         </td>
         <td class="p-1 min-w-[150px] sticky-col-left-2 border-r border-slate-200">
-            <input type="text" class="w-full bg-white border border-slate-200 focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1 text-xs manual-nama" placeholder="Nama Karyawan">
+            <input type="text" value="${namaVal}" class="w-full bg-white border border-slate-200 focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1 text-xs manual-nama" placeholder="Nama Karyawan">
         </td>
     `;
-
-    const optionsHtml = getShiftOptionsHTML();
 
     for (let i = 1; i <= manualDaysCount; i++) {
         const dateStr = `${currentManualYear}/${currentManualMonth}/${String(i).padStart(2, '0')}`;
         const d = new Date(currentManualYear, parseInt(currentManualMonth) - 1, i);
         const isWeekend = d.getDay() === 0 || d.getDay() === 6;
         const bgClass = isWeekend ? 'bg-rose-50' : '';
+        const savedCode = shiftsObj[i] || '';
+
+        const optionsHtml = getShiftOptionsHTML(savedCode);
 
         html += `
             <td class="p-1 min-w-[64px] border-r border-slate-200 ${bgClass}">
@@ -764,7 +810,7 @@ function saveManualData() {
 
     importedScheduleData = newData;
     renderImportedTable();
-    showModal('Berhasil', `${newData.length} slot jadwal dimasukkan ke Antrean. Klik "⚡ Proses Konversi" untuk melihat hasil konversi.`);
+    showModal('Berhasil', `${newData.length} slot jadwal dimasukkan ke Antrean. Klik tombol "⚡ Proses Konversi" untuk melihat hasil konversi.`);
 }
 
 function renderImportedTable() {
@@ -826,6 +872,11 @@ function processData() {
         return;
     }
 
+    if (!legendsState || legendsState.length === 0) {
+        showModal('Peringatan Tipe Shift', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki Tipe Shift terdaftar. Silakan tambahkan Tipe Shift terlebih dahulu pada tombol "📋 Tipe Jadwal".`);
+        return;
+    }
+
     const { converted, errors } = convertSchedules(importedScheduleData, legendsState);
     convertedData = converted;
 
@@ -837,7 +888,12 @@ function processData() {
     }
 
     if (errors.length > 0) {
-        showModal('Berhasil Konversi', `Berhasil mengkonversi seluruh ${convertedData.length} data jadwal!\n\nCatatan:\n` + errors.slice(0, 3).join('\n') + (errors.length > 3 ? '\n...' : ''));
+        showModal(
+            'Hasil Konversi & Peringatan Validasi Shift',
+            `Berhasil mengkonversi ${convertedData.length} data jadwal.\n\n` +
+            `⚠️ Terdapat ${errors.length} data GAGAL dikonversi karena kode shift TIDAK TERDAFTAR pada project '${activeProject.name}':\n\n` +
+            errors.slice(0, 8).join('\n') + (errors.length > 8 ? '\n...' : '')
+        );
     } else {
         showModal('Berhasil Konversi', `Berhasil mengkonversi seluruh ${convertedData.length} baris jadwal ke format system!\n\nKlik tombol "💾 Simpan Ke Riwayat" untuk menyimpan dan mengupdate riwayat data.`);
     }
