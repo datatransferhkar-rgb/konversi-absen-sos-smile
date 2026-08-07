@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Konversi Absens SOS Smile - System Schedule Converter</title>
-    <meta name="description" content="Aplikasi Konversi Jadwal Absensi Karyawan ke Format Standard Upload System SOS Smile dengan SQLite">
+    <title>Konversi Absensi SOS Smile - System Schedule Converter</title>
+    <meta name="description" content="Aplikasi Konversi Jadwal Absensi Karyawan ke Format Standard Upload System SOS Smile">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -45,7 +45,7 @@
 
     <!-- Header / Navbar -->
     <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -54,19 +54,19 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-900 to-violet-900">
-                        Konversi Jadwal Absensi SOS Smile
+                        Konversi Absensi SOS Smile
                     </h1>
                     <p class="text-xs text-slate-500 font-medium flex items-center gap-2">
                         Ubah jadwal harian menjadi format standar upload system
                         <span id="dbStatusBadge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            ● SQLite Connected
+                            ● Active & Ready
                         </span>
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-2">
-                <button id="btnExportExcel" onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow-sm shadow-emerald-200">
+                <button id="btnExportExcel" onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm shadow-emerald-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
@@ -74,251 +74,306 @@
                 </button>
             </div>
         </div>
+
+        <!-- 3 MAIN TABS NAVIGATION BAR -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2">
+            <nav class="flex space-x-2 border-b border-slate-200" aria-label="Main Tabs">
+                <button onclick="switchMainTab('projects')" id="mainTabProjects" class="py-3 px-5 text-sm font-extrabold border-b-2 border-indigo-600 text-indigo-600 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    1. Master Project
+                </button>
+
+                <button onclick="switchMainTab('legends')" id="mainTabLegends" class="py-3 px-5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-900 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    2. Legenda Absensi
+                </button>
+
+                <button onclick="switchMainTab('schedule')" id="mainTabSchedule" class="py-3 px-5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-900 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    3. Input & Konversi Jadwal
+                </button>
+            </nav>
+        </div>
     </header>
 
-    <!-- Container Utama -->
+    <!-- Main Container Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- ==================== TAB 1: MASTER PROJECT ==================== -->
+        <div id="viewTabProjects" class="space-y-6 block">
             
-            <!-- Sidebar Kiri: Master Project & Legenda (4/12) -->
-            <div class="lg:col-span-4 space-y-6">
-                
-                <!-- Card 1: Master Project -->
-                <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-extrabold">1</span>
-                            Master Project
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-black">1</span>
+                            Kelola Master Project
                         </h2>
-                        <button id="btnDeleteProject" onclick="deleteActiveProject()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold transition hidden" title="Hapus Project Aktif">
-                            Hapus Project
+                        <p class="text-xs text-slate-500 mt-0.5">Tambah dan lihat daftar proyek absensi yang telah terdaftar</p>
+                    </div>
+                </div>
+
+                <!-- Form Tambah Project Baru -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                    <label for="newProjectName" class="block text-xs font-bold text-slate-700 mb-1">Tambah Project Baru:</label>
+                    <div class="flex flex-wrap gap-2 max-w-xl">
+                        <input type="text" id="newProjectName" placeholder="Masukkan Nama Project Baru (contoh: Project Bandara)" class="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <button onclick="addProject()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-200">
+                            + Tambah Project
                         </button>
                     </div>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label for="projectSelect" class="block text-xs font-semibold text-slate-600 mb-1">Pilih Project Aktif (SQLite):</label>
-                            <select id="projectSelect" onchange="onProjectChanged()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                                <!-- Populated dynamically -->
-                            </select>
-                        </div>
+                </div>
 
-                        <div class="pt-2 border-t border-slate-100">
-                            <label for="newProjectName" class="block text-xs font-semibold text-slate-600 mb-1">Tambah Project Baru:</label>
-                            <div class="flex gap-2">
-                                <input type="text" id="newProjectName" placeholder="Nama Project Baru" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                                <button id="btnAddProject" onclick="addProject()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-sm font-semibold transition shadow-sm shadow-indigo-100">
-                                    Tambah
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Card 2: Legenda Absensi -->
-                <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-extrabold">2</span>
-                            Legenda Absensi
-                        </h2>
-                        <span id="activeProjectBadge" class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full border border-indigo-100">
-                            Default Project
-                        </span>
-                    </div>
-
-                    <!-- Form Tambah Legenda -->
-                    <form id="legendForm" onsubmit="addLegend(event)" class="space-y-3 mb-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                        <div class="grid grid-cols-3 gap-2">
-                            <div>
-                                <label for="legCode" class="block text-[11px] font-semibold text-slate-600 mb-1">Kode</label>
-                                <input type="text" id="legCode" required placeholder="P" maxlength="5" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-bold uppercase text-slate-900 focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label for="legIn" class="block text-[11px] font-semibold text-slate-600 mb-1">Masuk</label>
-                                <input type="time" id="legIn" required class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label for="legOut" class="block text-[11px] font-semibold text-slate-600 mb-1">Pulang</label>
-                                <input type="time" id="legOut" required class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                        </div>
-                        <button type="submit" id="btnSaveLegend" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-xl text-xs font-bold transition shadow-sm">
-                            + Simpan Legenda Ke SQLite
-                        </button>
-                    </form>
-
-                    <!-- Table Legenda -->
-                    <div class="custom-scrollbar overflow-x-auto max-h-52 border border-slate-200 rounded-xl">
+                <!-- Tabel List Project Yang Telah Ditambahkan -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
+                        <span>Daftar Project Terdaftar</span>
+                        <span id="projectCountBadge" class="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100">0 Project</span>
+                    </h3>
+                    <div class="custom-scrollbar overflow-x-auto border border-slate-200 rounded-xl">
                         <table class="w-full text-xs text-left">
-                            <thead class="text-[11px] font-bold text-slate-600 uppercase bg-slate-100 sticky top-0 border-b border-slate-200">
+                            <thead class="text-[11px] font-bold text-slate-600 uppercase bg-slate-100 border-b border-slate-200">
                                 <tr>
-                                    <th class="px-3 py-2.5">Kode</th>
-                                    <th class="px-3 py-2.5">Jam Masuk</th>
-                                    <th class="px-3 py-2.5">Jam Pulang</th>
-                                    <th class="px-3 py-2.5 text-center">Aksi</th>
+                                    <th class="px-4 py-3"># ID</th>
+                                    <th class="px-4 py-3">Nama Project</th>
+                                    <th class="px-4 py-3 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody id="legendTableBody" class="divide-y divide-slate-100 bg-white">
-                                <!-- Legend items -->
+                            <tbody id="projectListBody" class="divide-y divide-slate-100 bg-white">
+                                <!-- Populated dynamically by JS -->
                             </tbody>
                         </table>
                     </div>
-                </section>
-
-                <!-- Card 3: Info Database SQLite -->
-                <section class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-2xl p-5 shadow-sm space-y-2">
-                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-                            <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-                            <path d="M10 2C6.134 2 3 3.343 3 5s3.134 3 7 3 7-1.343 7-3-3.134-3-7-3z" />
-                        </svg>
-                        SQLite Storage Status
-                    </h3>
-                    <p class="text-xs text-indigo-100">Semua perubahan project dan legenda otomatis disimpan secara permanen di database SQLite lokal.</p>
-                    <div class="pt-2 flex justify-between items-center border-t border-indigo-800 text-[11px]">
-                        <span class="text-indigo-300">File Database:</span>
-                        <span class="font-mono text-emerald-300 font-semibold">database.sqlite</span>
-                    </div>
-                </section>
+                </div>
 
             </div>
 
-            <!-- Main Content Kanan: Input Jadwal & Preview (8/12) -->
-            <div class="lg:col-span-8 space-y-6">
-                
-                <!-- Card Input Data Jadwal Dual-Mode -->
-                <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
-                    <div class="flex flex-wrap justify-between items-center gap-3 mb-4 border-b border-slate-100 pb-3">
-                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-extrabold">3</span>
-                            Input Data Jadwal
+        </div>
+
+        <!-- ==================== TAB 2: LEGENDA ABSENSI ==================== -->
+        <div id="viewTabLegends" class="space-y-6 hidden">
+            
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-black">2</span>
+                            Legenda Absensi Shift
                         </h2>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="downloadTemplate()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition border border-slate-300/80 flex items-center gap-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Template Excel
-                            </button>
-                            <button id="btnProcessData" onclick="processData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-200">
-                                ⚡ Proses Konversi
-                            </button>
-                            <button id="btnSaveToDb" onclick="saveToSQLite()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm shadow-emerald-200 hidden">
-                                💾 Simpan Ke SQLite
-                            </button>
-                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">Konfigurasi kode shift, jam masuk, dan jam pulang per project</p>
                     </div>
 
-                    <!-- Quick Legend Bar -->
-                    <div id="quickLegend" class="mb-4 text-xs text-slate-600 flex gap-2 flex-wrap items-center bg-indigo-50/70 p-3 rounded-xl border border-indigo-100">
-                        <!-- Quick legend chips -->
+                    <!-- DROPDOWN PILIH PROJECT UNTUK LEGENDA -->
+                    <div class="flex items-center gap-2 bg-indigo-50/80 p-2 rounded-xl border border-indigo-100">
+                        <label for="legendProjectSelect" class="text-xs font-bold text-indigo-900">Pilih Project:</label>
+                        <select id="legendProjectSelect" onchange="onLegendProjectChanged()" class="bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-xs font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500">
+                            <!-- Populated dynamically -->
+                        </select>
                     </div>
+                </div>
 
-                    <!-- Tabs Header -->
-                    <div class="flex border-b border-slate-200 mb-4">
-                        <button onclick="switchTab('upload')" id="btnTabUpload" class="py-2.5 px-5 border-b-2 border-indigo-600 text-indigo-600 font-bold text-sm transition flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            Upload File Excel
-                        </button>
-                        <button onclick="switchTab('manual')" id="btnTabManual" class="py-2.5 px-5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-semibold text-sm transition flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Input Grid Kalender (Manual)
-                        </button>
-                    </div>
-
-                    <!-- Tab 1 Content: Upload Excel -->
-                    <div id="tabContentUpload" class="block">
-                        <div class="p-8 border-2 border-dashed border-indigo-200 rounded-2xl bg-indigo-50/40 text-center relative hover:bg-indigo-50/80 transition group cursor-pointer">
-                            <input type="file" id="fileUpload" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileUpload(event)">
-                            <div class="w-12 h-12 mx-auto bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100 group-hover:scale-110 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Form Input Legenda Baru (5/12) -->
+                    <div class="lg:col-span-5 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Tambah Legenda Shift Baru</h3>
+                        <form id="legendForm" onsubmit="addLegend(event)" class="space-y-3">
+                            <div>
+                                <label for="legCode" class="block text-[11px] font-semibold text-slate-600 mb-1">Kode Shift (Max 5 Karakter):</label>
+                                <input type="text" id="legCode" required placeholder="P" maxlength="5" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold uppercase text-slate-900 focus:ring-2 focus:ring-indigo-500">
                             </div>
-                            <p class="text-sm font-bold text-slate-800 mt-3">Klik atau Tarik File Excel Ke Sini</p>
-                            <p class="text-xs text-slate-500 mt-1">Dukungan format Crosstab: Kolom <b>NIK</b>, <b>Nama</b>, dan kolom <b>Tanggal (1-31)</b></p>
-                        </div>
-                    </div>
-
-                    <!-- Tab 2 Content: Manual Matrix Grid -->
-                    <div id="tabContentManual" class="hidden">
-                        <div class="flex flex-wrap gap-3 items-center mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <label for="manualMonthPicker" class="text-xs font-bold text-slate-700">Pilih Bulan & Tahun:</label>
-                            <input type="month" id="manualMonthPicker" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500">
-                            <button onclick="initManualGrid()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-                                Buat Grid Kalender
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label for="legIn" class="block text-[11px] font-semibold text-slate-600 mb-1">Jam Masuk (HH:MM):</label>
+                                    <input type="time" id="legIn" required class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="legOut" class="block text-[11px] font-semibold text-slate-600 mb-1">Jam Pulang (HH:MM):</label>
+                                    <input type="time" id="legOut" required class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm">
+                                + Simpan Legenda Ke Project
                             </button>
-                        </div>
-                        
-                        <div id="manualGridContainer" class="hidden space-y-3">
-                            <div class="custom-scrollbar overflow-x-auto max-h-80 border border-slate-200 rounded-xl bg-white shadow-inner relative">
-                                <table class="w-full text-xs text-left whitespace-nowrap">
-                                    <thead class="text-xs text-slate-700 bg-slate-100 sticky top-0 z-20 border-b border-slate-200">
-                                        <tr id="manualGridHeaderRow">
-                                            <!-- Headers populated by JS -->
-                                        </tr>
-                                    </thead>
-                                    <tbody id="manualGridBody" class="divide-y divide-slate-100">
-                                        <!-- Grid rows -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <button onclick="addManualRow()" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1.5 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
-                                    + Tambah Baris Karyawan
-                                </button>
-                                <button onclick="saveManualData()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-                                    Simpan Grid Ke Preview
-                                </button>
-                            </div>
-                        </div>
+                        </form>
                     </div>
 
-                    <!-- Imported Data Rows Table -->
-                    <div class="mt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Antrean Data Unpivot:</h3>
-                            <span id="importedRowCount" class="text-xs font-semibold text-slate-500">0 Data</span>
+                    <!-- Tabel & Quick Preview Legenda (7/12) -->
+                    <div class="lg:col-span-7 space-y-4">
+                        <div id="quickLegendTab2" class="text-xs text-slate-600 flex gap-2 flex-wrap items-center bg-indigo-50/70 p-3 rounded-xl border border-indigo-100">
+                            <!-- Chips loaded by JS -->
                         </div>
-                        <div class="custom-scrollbar overflow-x-auto max-h-48 border border-slate-200 rounded-xl bg-white">
+
+                        <div class="custom-scrollbar overflow-x-auto border border-slate-200 rounded-xl bg-white">
                             <table class="w-full text-xs text-left">
-                                <thead class="text-[11px] font-bold text-slate-600 uppercase bg-slate-100 sticky top-0 border-b border-slate-200">
+                                <thead class="text-[11px] font-bold text-slate-600 uppercase bg-slate-100 border-b border-slate-200">
                                     <tr>
-                                        <th class="px-4 py-2.5">NIK</th>
-                                        <th class="px-4 py-2.5">Nama</th>
-                                        <th class="px-4 py-2.5">Tanggal</th>
-                                        <th class="px-4 py-2.5 text-center">Kode Input</th>
+                                        <th class="px-4 py-2.5">Kode Shift</th>
+                                        <th class="px-4 py-2.5">Jam Masuk</th>
+                                        <th class="px-4 py-2.5">Jam Pulang</th>
+                                        <th class="px-4 py-2.5 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="importedTableBody" class="divide-y divide-slate-100">
-                                    <!-- Imported rows -->
+                                <tbody id="legendTableBody" class="divide-y divide-slate-100">
+                                    <!-- Populated dynamically -->
                                 </tbody>
                             </table>
-                            <div id="emptyImportMsg" class="text-center py-8 text-slate-400 text-xs font-medium">
-                                Belum ada data jadwal yang diupload atau dimasukkan.
-                            </div>
                         </div>
                     </div>
-                </section>
+                </div>
 
-                <!-- Card 4: Preview Hasil Konversi -->
-                <section class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
-                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-extrabold">4</span>
-                            Preview Hasil Konversi System
+            </div>
+
+        </div>
+
+        <!-- ==================== TAB 3: INPUT & KONVERSI JADWAL ==================== -->
+        <div id="viewTabSchedule" class="space-y-6 hidden">
+            
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-black">3</span>
+                            Input & Konversi Jadwal Absensi
                         </h2>
-                        <span id="resultCountBadge" class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100">
+                        <p class="text-xs text-slate-500 mt-0.5">Upload file Excel matriks atau isi grid kalender manual untuk konversi</p>
+                    </div>
+
+                    <!-- DROPDOWN PILIH PROJECT AKTIF UNTUK JADWAL -->
+                    <div class="flex items-center gap-2 bg-emerald-50/80 p-2 rounded-xl border border-emerald-100">
+                        <label for="scheduleProjectSelect" class="text-xs font-bold text-emerald-900">Project Aktif:</label>
+                        <select id="scheduleProjectSelect" onchange="onScheduleProjectChanged()" class="bg-white border border-emerald-200 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-900 focus:ring-2 focus:ring-emerald-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Action Buttons & Quick Legend Bar -->
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                    <div id="quickLegendTab3" class="text-xs text-slate-600 flex gap-2 flex-wrap items-center bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 flex-1">
+                        <!-- Chips loaded by JS -->
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="downloadTemplate()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition border border-slate-300 flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Template Excel
+                        </button>
+                        <button id="btnProcessData" onclick="processData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-200">
+                            ⚡ Proses Konversi
+                        </button>
+                        <button id="btnSaveToDb" onclick="saveToSQLite()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm shadow-emerald-200 hidden">
+                            💾 Simpan Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dual Sub-Tabs (Upload Excel / Grid Kalender) -->
+                <div class="flex border-b border-slate-200 mb-4">
+                    <button onclick="switchSubTab('upload')" id="btnTabUpload" class="py-2.5 px-5 border-b-2 border-indigo-600 text-indigo-600 font-bold text-xs transition flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload File Excel
+                    </button>
+                    <button onclick="switchSubTab('manual')" id="btnTabManual" class="py-2.5 px-5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-semibold text-xs transition flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Input Grid Kalender (Manual)
+                    </button>
+                </div>
+
+                <!-- Sub-Tab 1: Upload Excel -->
+                <div id="tabContentUpload" class="block mb-6">
+                    <div class="p-8 border-2 border-dashed border-indigo-200 rounded-2xl bg-indigo-50/40 text-center relative hover:bg-indigo-50/80 transition group cursor-pointer">
+                        <input type="file" id="fileUpload" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileUpload(event)">
+                        <div class="w-12 h-12 mx-auto bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100 group-hover:scale-110 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <p class="text-xs font-bold text-slate-800 mt-3">Klik atau Tarik File Excel Ke Sini</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Format Crosstab: Kolom <b>NIK</b>, <b>Nama</b>, dan <b>Tanggal (1-31)</b></p>
+                    </div>
+                </div>
+
+                <!-- Sub-Tab 2: Manual Matrix Grid -->
+                <div id="tabContentManual" class="hidden mb-6 space-y-3">
+                    <div class="flex flex-wrap gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <label for="manualMonthPicker" class="text-xs font-bold text-slate-700">Pilih Bulan & Tahun:</label>
+                        <input type="month" id="manualMonthPicker" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="initManualGrid()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
+                            Buat Grid Kalender
+                        </button>
+                    </div>
+                    
+                    <div id="manualGridContainer" class="hidden space-y-3">
+                        <div class="custom-scrollbar overflow-x-auto max-h-80 border border-slate-200 rounded-xl bg-white shadow-inner relative">
+                            <table class="w-full text-xs text-left whitespace-nowrap">
+                                <thead class="text-xs text-slate-700 bg-slate-100 sticky top-0 z-20 border-b border-slate-200">
+                                    <tr id="manualGridHeaderRow">
+                                        <!-- Headers populated by JS -->
+                                    </tr>
+                                </thead>
+                                <tbody id="manualGridBody" class="divide-y divide-slate-100">
+                                    <!-- Grid rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <button onclick="addManualRow()" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1.5 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                                + Tambah Baris Karyawan
+                            </button>
+                            <button onclick="saveManualData()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
+                                Simpan Grid Ke Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Antrean Data Unpivot Table -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Antrean Data Jadwal (Unpivot):</h3>
+                        <span id="importedRowCount" class="text-xs font-semibold text-slate-500">0 Data</span>
+                    </div>
+                    <div class="custom-scrollbar overflow-x-auto max-h-48 border border-slate-200 rounded-xl bg-white">
+                        <table class="w-full text-xs text-left">
+                            <thead class="text-[11px] font-bold text-slate-600 uppercase bg-slate-100 sticky top-0 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-2.5">NIK</th>
+                                    <th class="px-4 py-2.5">Nama</th>
+                                    <th class="px-4 py-2.5">Tanggal</th>
+                                    <th class="px-4 py-2.5 text-center">Kode Shift Input</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importedTableBody" class="divide-y divide-slate-100">
+                                <!-- Imported rows -->
+                            </tbody>
+                        </table>
+                        <div id="emptyImportMsg" class="text-center py-8 text-slate-400 text-xs font-medium">
+                            Belum ada data jadwal yang diupload atau dimasukkan.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Hasil Konversi Table -->
+                <div class="mt-6 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Preview Hasil Konversi System Upload:</h3>
+                        <span id="resultCountBadge" class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-100">
                             0 Baris Terkonversi
                         </span>
                     </div>
-                    
                     <div class="custom-scrollbar overflow-x-auto max-h-64 border border-slate-200 rounded-xl">
                         <table class="w-full text-xs text-left">
                             <thead class="text-[11px] font-bold text-white uppercase bg-slate-900 sticky top-0">
@@ -333,14 +388,15 @@
                             </tbody>
                         </table>
                         <div id="emptyResultMsg" class="text-center py-8 text-slate-400 text-xs font-medium">
-                            Klik "⚡ Proses Konversi" untuk melihat hasil format standar system.
+                            Klik "⚡ Proses Konversi" untuk melihat hasil konversi standar upload system.
                         </div>
                     </div>
-                </section>
+                </div>
 
             </div>
 
         </div>
+
     </main>
 
     <!-- Custom Modal Dialog -->
