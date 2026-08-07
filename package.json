@@ -1,0 +1,24 @@
+{
+  "name": "konversi-absen-sos-smile",
+  "version": "1.0.0",
+  "description": "Aplikasi Konversi Absensi SOS Smile ke Format Upload System dengan SQLite",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "absensi",
+    "excel",
+    "konversi",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}
