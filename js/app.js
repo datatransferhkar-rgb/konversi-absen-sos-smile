@@ -372,6 +372,7 @@ function switchSubTab(tabId) {
     const tabUpload = document.getElementById('tabContentUpload');
     const tabManual = document.getElementById('tabContentManual');
     const tabHistory = document.getElementById('tabContentHistory');
+    const queueAndPreviewSection = document.getElementById('queueAndPreviewSection');
 
     const btnUpload = document.getElementById('btnTabUpload');
     const btnManual = document.getElementById('btnTabManual');
@@ -400,6 +401,7 @@ function switchSubTab(tabId) {
     if (tabId === 'upload') {
         tabUpload.classList.remove('hidden');
         tabUpload.classList.add('block');
+        if (queueAndPreviewSection) queueAndPreviewSection.classList.remove('hidden');
         if (btnUpload) {
             btnUpload.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
             btnUpload.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
@@ -407,6 +409,7 @@ function switchSubTab(tabId) {
     } else if (tabId === 'manual') {
         tabManual.classList.remove('hidden');
         tabManual.classList.add('block');
+        if (queueAndPreviewSection) queueAndPreviewSection.classList.remove('hidden');
         if (btnManual) {
             btnManual.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
             btnManual.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
@@ -415,6 +418,7 @@ function switchSubTab(tabId) {
     } else if (tabId === 'history') {
         tabHistory.classList.remove('hidden');
         tabHistory.classList.add('block');
+        if (queueAndPreviewSection) queueAndPreviewSection.classList.add('hidden'); // Hide Antrean & Preview tables on History tab!
         if (btnHistory) {
             btnHistory.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
             btnHistory.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
