@@ -7,7 +7,11 @@ const STORAGE_KEYS = {
     SCHEDULES: 'sos_absen_schedules_' // + projectId
 };
 
-// Initial default state for offline/GitHub Pages
+function isLocalhostServer() {
+    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
+
+// Initial default seed for offline/GitHub Pages
 function getLocalSeedProjects() {
     return [{ id: 1, name: 'Default Project', created_at: new Date().toISOString() }];
 }
@@ -23,50 +27,64 @@ function getLocalSeedLegends() {
 const ApiService = {
     // 1. Fetch All Projects
     async getProjects() {
-        try {
-            const res = await fetch(`${API_BASE}/projects`);
-            if (res.ok) {
-                const data = await res.json();
-                return data.data;
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.data && data.data.length > 0) {
+                        return data.data;
+                    }
+                }
+            } catch (err) {
+                console.warn('Backend API server tidak merespons, beralih ke LocalStorage:', err);
             }
-        } catch (err) {
-            console.warn('Backend API server tidak tersedia. Menggunakan LocalStorage (Mode GitHub Pages):', err);
         }
 
-        // LocalStorage Fallback
-        let projects = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS));
-        if (!projects || projects.length === 0) {
-            projects = getLocalSeedProjects();
-            localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+        // LocalStorage Fallback (GitHub Pages / Static Hosting)
+        try {
+            let projects = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS));
+            if (!projects || !Array.isArray(projects) || projects.length === 0) {
+                projects = getLocalSeedProjects();
+                localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+            }
+            return projects;
+        } catch (e) {
+            console.error('Error reading localStorage projects:', e);
+            const seed = getLocalSeedProjects();
+            localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(seed));
+            return seed;
         }
-        return projects;
     },
 
     // 2. Add New Project
     async addProject(name) {
-        try {
-            const res = await fetch(`${API_BASE}/projects`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                return data.data;
+        const cleanName = name.trim();
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: cleanName })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.data;
+                }
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
             }
-        } catch (err) {
-            console.warn('API error, fallback to LocalStorage');
         }
 
         // LocalStorage Fallback
         const projects = await this.getProjects();
-        if (projects.some(p => p.name.toLowerCase() === name.trim().toLowerCase())) {
+        if (projects.some(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
             throw new Error('Project dengan nama tersebut sudah ada.');
         }
 
         const newProj = {
             id: Date.now(),
-            name: name.trim(),
+            name: cleanName,
             created_at: new Date().toISOString()
         };
         projects.push(newProj);
@@ -76,11 +94,13 @@ const ApiService = {
 
     // 3. Delete Project
     async deleteProject(id) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
-            if (res.ok) return await res.json();
-        } catch (err) {
-            console.warn('API error, fallback to LocalStorage');
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' });
+                if (res.ok) return await res.json();
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
+            }
         }
 
         // LocalStorage Fallback
@@ -94,45 +114,68 @@ const ApiService = {
 
     // 4. Get Legends per Project
     async getLegends(projectId) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/${projectId}/legends`);
-            if (res.ok) {
-                const data = await res.json();
-                return data.data;
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/legends`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.data) {
+                        return data.data.map(l => ({
+                            id: l.id,
+                            project_id: l.project_id,
+                            code: l.code,
+                            time_in: l.time_in || l.in || '07:00',
+                            time_out: l.time_out || l.out || '15:00'
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
             }
-        } catch (err) {
-            console.warn('API error, fallback to LocalStorage');
         }
 
         // LocalStorage Fallback
-        let legends = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEGENDS + projectId));
-        if (!legends) {
-            if (projectId === 1) {
-                legends = getLocalSeedLegends();
-            } else {
-                legends = [];
+        try {
+            let legends = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEGENDS + projectId));
+            if (!legends || !Array.isArray(legends) || legends.length === 0) {
+                if (projectId == 1) {
+                    legends = getLocalSeedLegends();
+                } else {
+                    legends = [];
+                }
+                localStorage.setItem(STORAGE_KEYS.LEGENDS + projectId, JSON.stringify(legends));
             }
-            localStorage.setItem(STORAGE_KEYS.LEGENDS + projectId, JSON.stringify(legends));
+            return legends.map(l => ({
+                id: l.id || Date.now(),
+                project_id: l.project_id || projectId,
+                code: l.code,
+                time_in: l.time_in || l.in || '07:00',
+                time_out: l.time_out || l.out || '15:00'
+            }));
+        } catch (e) {
+            console.error('Error reading localStorage legends:', e);
+            return getLocalSeedLegends();
         }
-        return legends;
     },
 
     // 5. Save/Update Legend
     async saveLegend(projectId, legend) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/${projectId}/legends`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(legend)
-            });
-            if (res.ok) return await res.json();
-        } catch (err) {
-            console.warn('API error, fallback to LocalStorage');
+        const upperCode = legend.code.trim().toUpperCase();
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/legends`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: upperCode, time_in: legend.time_in, time_out: legend.time_out })
+                });
+                if (res.ok) return await res.json();
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
+            }
         }
 
         // LocalStorage Fallback
         const legends = await this.getLegends(projectId);
-        const upperCode = legend.code.trim().toUpperCase();
         const idx = legends.findIndex(l => l.code.toUpperCase() === upperCode);
 
         const newLegend = {
@@ -155,35 +198,40 @@ const ApiService = {
 
     // 6. Delete Legend
     async deleteLegend(projectId, code) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/${projectId}/legends/${code}`, { method: 'DELETE' });
-            if (res.ok) return await res.json();
-        } catch (err) {
-            console.warn('API error, fallback to LocalStorage');
+        const upperCode = code.trim().toUpperCase();
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/legends/${upperCode}`, { method: 'DELETE' });
+                if (res.ok) return await res.json();
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
+            }
         }
 
         // LocalStorage Fallback
         let legends = await this.getLegends(projectId);
-        legends = legends.filter(l => l.code.toUpperCase() !== code.toUpperCase());
+        legends = legends.filter(l => l.code.toUpperCase() !== upperCode);
         localStorage.setItem(STORAGE_KEYS.LEGENDS + projectId, JSON.stringify(legends));
         return { message: 'Legend deleted' };
     },
 
     // 7. Save Schedules Batch
     async saveSchedules(projectId, items, clearExisting = true) {
-        try {
-            const res = await fetch(`${API_BASE}/projects/${projectId}/schedules`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items, clearExisting })
-            });
-            if (res.ok) return await res.json();
-        } catch (err) {
-            console.warn('API error, fallback to LocalStorage');
+        if (isLocalhostServer()) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/schedules`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items, clearExisting })
+                });
+                if (res.ok) return await res.json();
+            } catch (err) {
+                console.warn('Backend API error, beralih ke LocalStorage');
+            }
         }
 
         // LocalStorage Fallback
         localStorage.setItem(STORAGE_KEYS.SCHEDULES + projectId, JSON.stringify(items));
-        return { message: `Berhasil menyimpan ${items.length} data ke penyimpanan browser.` };
+        return { message: `Berhasil menyimpan ${items.length} data jadwal ke penyimpanan browser.` };
     }
 };

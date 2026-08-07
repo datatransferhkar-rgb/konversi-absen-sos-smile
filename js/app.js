@@ -13,10 +13,12 @@ let manualDaysCount = 0;
 // Current Active Main Tab ('projects' | 'legends' | 'schedule')
 let currentMainTab = 'projects';
 
-// Initialize Application
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize Application when DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
     initApp();
-});
+}
 
 async function initApp() {
     // Set default month picker to current year-month
@@ -43,33 +45,49 @@ function switchMainTab(tabName) {
     const tabLegendsBtn = document.getElementById('mainTabLegends');
     const tabScheduleBtn = document.getElementById('mainTabSchedule');
 
-    // Hide all views
+    if (!viewProjects || !viewLegends || !viewSchedule) return;
+
+    // Hide all views explicitly
     viewProjects.classList.add('hidden');
+    viewProjects.classList.remove('block');
+
     viewLegends.classList.add('hidden');
+    viewLegends.classList.remove('block');
+
     viewSchedule.classList.add('hidden');
+    viewSchedule.classList.remove('block');
 
     // Reset button styles
     [tabProjectsBtn, tabLegendsBtn, tabScheduleBtn].forEach(btn => {
         if (btn) {
-            btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-extrabold');
+            btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-extrabold', 'bg-indigo-50/50');
             btn.classList.add('border-transparent', 'text-slate-500', 'font-semibold');
         }
     });
 
     if (tabName === 'projects') {
         viewProjects.classList.remove('hidden');
-        tabProjectsBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
-        tabProjectsBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+        viewProjects.classList.add('block');
+        if (tabProjectsBtn) {
+            tabProjectsBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
+            tabProjectsBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+        }
         renderProjectList();
     } else if (tabName === 'legends') {
         viewLegends.classList.remove('hidden');
-        tabLegendsBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
-        tabLegendsBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+        viewLegends.classList.add('block');
+        if (tabLegendsBtn) {
+            tabLegendsBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
+            tabLegendsBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+        }
         loadLegends();
     } else if (tabName === 'schedule') {
         viewSchedule.classList.remove('hidden');
-        tabScheduleBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
-        tabScheduleBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+        viewSchedule.classList.add('block');
+        if (tabScheduleBtn) {
+            tabScheduleBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
+            tabScheduleBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+        }
         loadLegends();
     }
 }
@@ -79,20 +97,21 @@ function switchMainTab(tabName) {
 async function loadProjects() {
     try {
         const projects = await ApiService.getProjects();
-        if (projects && projects.length > 0) {
+        if (projects && Array.isArray(projects) && projects.length > 0) {
             projectsState = projects;
         } else {
-            // Local fallback if DB server empty
             projectsState = [{ id: 1, name: 'Default Project', created_at: new Date().toISOString() }];
         }
-        updateProjectDropdowns();
-        if (!activeProject && projectsState.length > 0) {
-            activeProject = projectsState[0];
-        }
-        renderProjectList();
     } catch (err) {
         console.error('Gagal memuat projects:', err);
+        projectsState = [{ id: 1, name: 'Default Project', created_at: new Date().toISOString() }];
     }
+
+    if (!activeProject && projectsState.length > 0) {
+        activeProject = projectsState[0];
+    }
+    updateProjectDropdowns();
+    renderProjectList();
 }
 
 function updateProjectDropdowns() {
@@ -106,7 +125,9 @@ function updateProjectDropdowns() {
             const opt = document.createElement('option');
             opt.value = p.id;
             opt.textContent = p.name;
-            if (activeProject && p.id === activeProject.id) opt.selected = true;
+            if (activeProject && String(p.id) === String(activeProject.id)) {
+                opt.selected = true;
+            }
             select.appendChild(opt);
         });
     });
@@ -120,15 +141,15 @@ function renderProjectList() {
     tbody.innerHTML = '';
     if (badge) badge.textContent = `${projectsState.length} Project`;
 
-    if (projectsState.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400 text-xs">Belum ada project terdaftar. Silakan tambah project baru di atas.</td></tr>`;
+    if (!projectsState || projectsState.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-slate-400 text-xs">Belum ada project terdaftar. Silakan tambah project baru di atas.</td></tr>`;
         return;
     }
 
     projectsState.forEach(p => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition';
-        const isSelected = activeProject && activeProject.id === p.id;
+        const isSelected = activeProject && String(activeProject.id) === String(p.id);
         const activeTag = isSelected ? `<span class="ml-2 bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">Aktif</span>` : '';
 
         tr.innerHTML = `
@@ -137,13 +158,13 @@ function renderProjectList() {
                 ${p.name} ${activeTag}
             </td>
             <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
-                <button onclick="openProjectLegends(${p.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-bold transition border border-indigo-100">
+                <button onclick="openProjectLegends(${p.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold transition border border-indigo-100 shadow-sm">
                     📋 Legenda Shift
                 </button>
-                <button onclick="openProjectSchedule(${p.id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-bold transition border border-emerald-100">
+                <button onclick="openProjectSchedule(${p.id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold transition border border-emerald-100 shadow-sm">
                     ⚡ Input Jadwal
                 </button>
-                <button onclick="deleteProjectById(${p.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded-lg text-xs font-bold transition border border-rose-100" title="Hapus Project">
+                <button onclick="deleteProjectById(${p.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1 rounded-lg text-xs font-bold transition border border-rose-100 shadow-sm" title="Hapus Project">
                     Hapus
                 </button>
             </td>
@@ -154,40 +175,48 @@ function renderProjectList() {
 
 async function onLegendProjectChanged() {
     const select = document.getElementById('legendProjectSelect');
-    const projectId = parseInt(select.value, 10);
-    activeProject = projectsState.find(p => p.id === projectId) || projectsState[0];
+    if (!select) return;
+    const projectId = select.value;
+    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
     updateProjectDropdowns();
     await loadLegends();
 }
 
 async function onScheduleProjectChanged() {
     const select = document.getElementById('scheduleProjectSelect');
-    const projectId = parseInt(select.value, 10);
-    activeProject = projectsState.find(p => p.id === projectId) || projectsState[0];
+    if (!select) return;
+    const projectId = select.value;
+    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
     updateProjectDropdowns();
     await loadLegends();
 }
 
 async function openProjectLegends(projectId) {
-    activeProject = projectsState.find(p => p.id === projectId) || projectsState[0];
+    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
     updateProjectDropdowns();
     switchMainTab('legends');
 }
 
 async function openProjectSchedule(projectId) {
-    activeProject = projectsState.find(p => p.id === projectId) || projectsState[0];
+    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
     updateProjectDropdowns();
     switchMainTab('schedule');
 }
 
 async function addProject() {
     const input = document.getElementById('newProjectName');
+    if (!input) return;
     const name = input.value.trim();
-    if (!name) return;
+    if (!name) {
+        showModal('Peringatan', 'Silakan masukkan nama project terlebih dahulu.');
+        return;
+    }
 
     try {
         const newProj = await ApiService.addProject(name);
-        projectsState.push(newProj);
+        if (!projectsState.some(p => String(p.id) === String(newProj.id))) {
+            projectsState.push(newProj);
+        }
         activeProject = newProj;
         updateProjectDropdowns();
         renderProjectList();
@@ -199,7 +228,7 @@ async function addProject() {
 }
 
 async function deleteProjectById(projectId) {
-    const proj = projectsState.find(p => p.id === projectId);
+    const proj = projectsState.find(p => String(p.id) === String(projectId));
     if (!proj) return;
 
     if (projectsState.length <= 1) {
@@ -213,8 +242,8 @@ async function deleteProjectById(projectId) {
 
     try {
         await ApiService.deleteProject(projectId);
-        projectsState = projectsState.filter(p => p.id !== projectId);
-        if (activeProject && activeProject.id === projectId) {
+        projectsState = projectsState.filter(p => String(p.id) !== String(projectId));
+        if (activeProject && String(activeProject.id) === String(projectId)) {
             activeProject = projectsState[0];
         }
         updateProjectDropdowns();
@@ -228,11 +257,18 @@ async function deleteProjectById(projectId) {
 // ==================== LEGENDA ABSENSI FUNCTIONS ==================== //
 
 async function loadLegends() {
-    if (!activeProject) return;
+    if (!activeProject) {
+        if (projectsState.length > 0) activeProject = projectsState[0];
+        else return;
+    }
     try {
         const legends = await ApiService.getLegends(activeProject.id);
-        if (legends) {
-            legendsState = legends.map(l => ({ code: l.code, time_in: l.time_in, time_out: l.time_out }));
+        if (legends && Array.isArray(legends)) {
+            legendsState = legends.map(l => ({
+                code: l.code,
+                time_in: l.time_in || l.in || '07:00',
+                time_out: l.time_out || l.out || '15:00'
+            }));
         } else {
             legendsState = [
                 { code: 'P', time_in: '07:00', time_out: '15:00' },
@@ -291,9 +327,14 @@ function renderQuickLegend() {
 
 async function addLegend(e) {
     e.preventDefault();
-    const code = document.getElementById('legCode').value.trim().toUpperCase();
-    const time_in = document.getElementById('legIn').value;
-    const time_out = document.getElementById('legOut').value;
+    const codeEl = document.getElementById('legCode');
+    const inEl = document.getElementById('legIn');
+    const outEl = document.getElementById('legOut');
+    if (!codeEl || !inEl || !outEl) return;
+
+    const code = codeEl.value.trim().toUpperCase();
+    const time_in = inEl.value;
+    const time_out = outEl.value;
 
     if (!code || !time_in || !time_out) return;
 
@@ -310,9 +351,9 @@ async function addLegend(e) {
         renderLegendTable();
         renderQuickLegend();
 
-        document.getElementById('legCode').value = '';
-        document.getElementById('legIn').value = '';
-        document.getElementById('legOut').value = '';
+        codeEl.value = '';
+        inEl.value = '';
+        outEl.value = '';
 
         showModal('Sukses', `Legenda '${code}' (${time_in} - ${time_out}) tersimpan untuk project ${activeProject.name}!`);
     } catch (err) {
@@ -341,26 +382,36 @@ function switchSubTab(tabId) {
     const btnUpload = document.getElementById('btnTabUpload');
     const btnManual = document.getElementById('btnTabManual');
 
+    if (!tabUpload || !tabManual) return;
+
     if (tabId === 'upload') {
         tabUpload.classList.remove('hidden');
         tabUpload.classList.add('block');
         tabManual.classList.remove('block');
         tabManual.classList.add('hidden');
 
-        btnUpload.classList.add('border-indigo-600', 'text-indigo-600');
-        btnUpload.classList.remove('border-transparent', 'text-slate-500');
-        btnManual.classList.remove('border-indigo-600', 'text-indigo-600');
-        btnManual.classList.add('border-transparent', 'text-slate-500');
+        if (btnUpload) {
+            btnUpload.classList.add('border-indigo-600', 'text-indigo-600');
+            btnUpload.classList.remove('border-transparent', 'text-slate-500');
+        }
+        if (btnManual) {
+            btnManual.classList.remove('border-indigo-600', 'text-indigo-600');
+            btnManual.classList.add('border-transparent', 'text-slate-500');
+        }
     } else {
         tabManual.classList.remove('hidden');
         tabManual.classList.add('block');
         tabUpload.classList.remove('block');
         tabUpload.classList.add('hidden');
 
-        btnManual.classList.add('border-indigo-600', 'text-indigo-600');
-        btnManual.classList.remove('border-transparent', 'text-slate-500');
-        btnUpload.classList.remove('border-indigo-600', 'text-indigo-600');
-        btnUpload.classList.add('border-transparent', 'text-slate-500');
+        if (btnManual) {
+            btnManual.classList.add('border-indigo-600', 'text-indigo-600');
+            btnManual.classList.remove('border-transparent', 'text-slate-500');
+        }
+        if (btnUpload) {
+            btnUpload.classList.remove('border-indigo-600', 'text-indigo-600');
+            btnUpload.classList.add('border-transparent', 'text-slate-500');
+        }
     }
 }
 
@@ -388,7 +439,9 @@ async function handleFileUpload(event) {
 
 // Manual Calendar Matrix Grid
 function initManualGrid() {
-    const monthInput = document.getElementById('manualMonthPicker').value;
+    const monthPicker = document.getElementById('manualMonthPicker');
+    if (!monthPicker) return;
+    const monthInput = monthPicker.value;
     if (!monthInput) {
         showModal('Peringatan', 'Silakan pilih bulan dan tahun terlebih dahulu.');
         return;
@@ -402,17 +455,20 @@ function initManualGrid() {
     renderManualGridHeaders();
 
     const tbody = document.getElementById('manualGridBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     addManualRow();
     addManualRow();
     addManualRow();
 
-    document.getElementById('manualGridContainer').classList.remove('hidden');
+    const container = document.getElementById('manualGridContainer');
+    if (container) container.classList.remove('hidden');
 }
 
 function renderManualGridHeaders() {
     const tr = document.getElementById('manualGridHeaderRow');
+    if (!tr) return;
     let html = `
         <th class="px-3 py-2 min-w-[120px] sticky-header-left-1 border-r border-slate-200">NIK</th>
         <th class="px-3 py-2 min-w-[150px] sticky-header-left-2 border-r border-slate-200">Nama</th>
@@ -431,6 +487,7 @@ function renderManualGridHeaders() {
 
 function addManualRow() {
     const tbody = document.getElementById('manualGridBody');
+    if (!tbody) return;
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-slate-50 transition';
 
@@ -504,12 +561,12 @@ function renderImportedTable() {
     if (!tbody) return;
 
     tbody.innerHTML = '';
-    countBadge.textContent = `${importedScheduleData.length} Data`;
+    if (countBadge) countBadge.textContent = `${importedScheduleData.length} Data`;
 
     if (importedScheduleData.length === 0) {
-        emptyMsg.classList.remove('hidden');
+        if (emptyMsg) emptyMsg.classList.remove('hidden');
     } else {
-        emptyMsg.classList.add('hidden');
+        if (emptyMsg) emptyMsg.classList.add('hidden');
         const displayData = importedScheduleData.slice(0, 100);
 
         displayData.forEach(d => {
@@ -541,7 +598,7 @@ function processData() {
     }
 
     if (legendsState.length === 0) {
-        showModal('Peringatan', `Project '${activeProject.name}' belum memiliki legenda. Tambahkan legenda di Tab 2 terlebih dahulu.`);
+        showModal('Peringatan', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki legenda. Tambahkan legenda di Tab 2 terlebih dahulu.`);
         return;
     }
 
@@ -569,12 +626,12 @@ function renderResultTable() {
     if (!tbody) return;
 
     tbody.innerHTML = '';
-    resultBadge.textContent = `${convertedData.length} Baris Terkonversi`;
+    if (resultBadge) resultBadge.textContent = `${convertedData.length} Baris Terkonversi`;
 
     if (convertedData.length === 0) {
-        emptyMsg.classList.remove('hidden');
+        if (emptyMsg) emptyMsg.classList.remove('hidden');
     } else {
-        emptyMsg.classList.add('hidden');
+        if (emptyMsg) emptyMsg.classList.add('hidden');
         convertedData.forEach(d => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-100 transition';
@@ -603,8 +660,8 @@ async function saveToSQLite() {
             converted_code: c.ScheduleCode
         }));
 
-        await ApiService.saveSchedules(activeProject.id, items, true);
-        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject.name}!`);
+        await ApiService.saveSchedules(activeProject ? activeProject.id : 1, items, true);
+        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject ? activeProject.name : ''}!`);
     } catch (err) {
         showModal('Error Database', err.message || 'Gagal menyimpan data.');
     }
