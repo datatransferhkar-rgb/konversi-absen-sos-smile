@@ -10,9 +10,6 @@ let currentManualYear = '';
 let currentManualMonth = '';
 let manualDaysCount = 0;
 
-// Current Active Main Tab ('projects' | 'legends' | 'schedule')
-let currentMainTab = 'projects';
-
 // Initialize Application when DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
@@ -29,70 +26,9 @@ async function initApp() {
     if (monthPicker) monthPicker.value = `${yyyy}-${mm}`;
 
     await loadProjects();
-    switchMainTab('projects');
 }
 
-// ==================== MAIN TAB SWITCHING ==================== //
-
-function switchMainTab(tabName) {
-    currentMainTab = tabName;
-
-    const viewProjects = document.getElementById('viewTabProjects');
-    const viewLegends = document.getElementById('viewTabLegends');
-    const viewSchedule = document.getElementById('viewTabSchedule');
-
-    const tabProjectsBtn = document.getElementById('mainTabProjects');
-    const tabLegendsBtn = document.getElementById('mainTabLegends');
-    const tabScheduleBtn = document.getElementById('mainTabSchedule');
-
-    if (!viewProjects || !viewLegends || !viewSchedule) return;
-
-    // Hide all views explicitly
-    viewProjects.classList.add('hidden');
-    viewProjects.classList.remove('block');
-
-    viewLegends.classList.add('hidden');
-    viewLegends.classList.remove('block');
-
-    viewSchedule.classList.add('hidden');
-    viewSchedule.classList.remove('block');
-
-    // Reset button styles
-    [tabProjectsBtn, tabLegendsBtn, tabScheduleBtn].forEach(btn => {
-        if (btn) {
-            btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-extrabold', 'bg-indigo-50/50');
-            btn.classList.add('border-transparent', 'text-slate-500', 'font-semibold');
-        }
-    });
-
-    if (tabName === 'projects') {
-        viewProjects.classList.remove('hidden');
-        viewProjects.classList.add('block');
-        if (tabProjectsBtn) {
-            tabProjectsBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
-            tabProjectsBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
-        }
-        renderProjectList();
-    } else if (tabName === 'legends') {
-        viewLegends.classList.remove('hidden');
-        viewLegends.classList.add('block');
-        if (tabLegendsBtn) {
-            tabLegendsBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
-            tabLegendsBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
-        }
-        loadLegends();
-    } else if (tabName === 'schedule') {
-        viewSchedule.classList.remove('hidden');
-        viewSchedule.classList.add('block');
-        if (tabScheduleBtn) {
-            tabScheduleBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-extrabold');
-            tabScheduleBtn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
-        }
-        loadLegends();
-    }
-}
-
-// ==================== MASTER PROJECT FUNCTIONS ==================== //
+// ==================== MASTER PROJECT DASHBOARD ==================== //
 
 async function loadProjects() {
     try {
@@ -110,30 +46,10 @@ async function loadProjects() {
     if (!activeProject && projectsState.length > 0) {
         activeProject = projectsState[0];
     }
-    updateProjectDropdowns();
-    renderProjectList();
+    await renderProjectList();
 }
 
-function updateProjectDropdowns() {
-    const legendSelect = document.getElementById('legendProjectSelect');
-    const scheduleSelect = document.getElementById('scheduleProjectSelect');
-
-    [legendSelect, scheduleSelect].forEach(select => {
-        if (!select) return;
-        select.innerHTML = '';
-        projectsState.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.textContent = p.name;
-            if (activeProject && String(p.id) === String(activeProject.id)) {
-                opt.selected = true;
-            }
-            select.appendChild(opt);
-        });
-    });
-}
-
-function renderProjectList() {
+async function renderProjectList() {
     const tbody = document.getElementById('projectListBody');
     const badge = document.getElementById('projectCountBadge');
     if (!tbody) return;
@@ -142,65 +58,41 @@ function renderProjectList() {
     if (badge) badge.textContent = `${projectsState.length} Project`;
 
     if (!projectsState || projectsState.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-slate-400 text-xs">Belum ada project terdaftar. Silakan tambah project baru di atas.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400 text-xs">Belum ada project terdaftar. Silakan tambah project baru di atas.</td></tr>`;
         return;
     }
 
-    projectsState.forEach(p => {
+    // Fetch legend counts for each project
+    for (const p of projectsState) {
+        const legends = await ApiService.getLegends(p.id);
+        const legendCount = legends ? legends.length : 0;
+
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition';
-        const isSelected = activeProject && String(activeProject.id) === String(p.id);
-        const activeTag = isSelected ? `<span class="ml-2 bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">Aktif</span>` : '';
-
         tr.innerHTML = `
-            <td class="px-4 py-3 font-mono font-bold text-slate-500">#${p.id}</td>
-            <td class="px-4 py-3 font-bold text-slate-900 flex items-center">
-                ${p.name} ${activeTag}
+            <td class="px-4 py-3.5 font-mono font-bold text-slate-500">#${p.id}</td>
+            <td class="px-4 py-3.5 font-bold text-slate-900">
+                ${p.name}
             </td>
-            <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
-                <button onclick="openProjectLegends(${p.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold transition border border-indigo-100 shadow-sm">
-                    📋 Legenda Shift
+            <td class="px-4 py-3.5 text-center">
+                <span class="bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-bold border border-indigo-100">
+                    ${legendCount} Tipe Shift
+                </span>
+            </td>
+            <td class="px-4 py-3.5 text-center space-x-1.5 whitespace-nowrap">
+                <button onclick="openModalTipeJadwal(${p.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-100 flex-inline items-center gap-1">
+                    📋 Tipe Jadwal
                 </button>
-                <button onclick="openProjectSchedule(${p.id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold transition border border-emerald-100 shadow-sm">
-                    ⚡ Input Jadwal
+                <button onclick="openModalInputJadwal(${p.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm shadow-emerald-100 flex-inline items-center gap-1">
+                    ⚡ Input & Konversi Jadwal
                 </button>
-                <button onclick="deleteProjectById(${p.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1 rounded-lg text-xs font-bold transition border border-rose-100 shadow-sm" title="Hapus Project">
-                    Hapus
+                <button onclick="deleteProjectById(${p.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-xl text-xs font-bold transition border border-rose-200" title="Hapus Project">
+                    🗑️ Hapus
                 </button>
             </td>
         `;
         tbody.appendChild(tr);
-    });
-}
-
-async function onLegendProjectChanged() {
-    const select = document.getElementById('legendProjectSelect');
-    if (!select) return;
-    const projectId = select.value;
-    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
-    updateProjectDropdowns();
-    await loadLegends();
-}
-
-async function onScheduleProjectChanged() {
-    const select = document.getElementById('scheduleProjectSelect');
-    if (!select) return;
-    const projectId = select.value;
-    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
-    updateProjectDropdowns();
-    await loadLegends();
-}
-
-async function openProjectLegends(projectId) {
-    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
-    updateProjectDropdowns();
-    switchMainTab('legends');
-}
-
-async function openProjectSchedule(projectId) {
-    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
-    updateProjectDropdowns();
-    switchMainTab('schedule');
+    }
 }
 
 async function addProject() {
@@ -218,10 +110,9 @@ async function addProject() {
             projectsState.push(newProj);
         }
         activeProject = newProj;
-        updateProjectDropdowns();
-        renderProjectList();
+        await renderProjectList();
         input.value = '';
-        showModal('Sukses', `Project '${name}' berhasil ditambahkan ke daftar Master Project!`);
+        showModal('Sukses', `Project '${name}' berhasil ditambahkan ke Daftar Project!`);
     } catch (err) {
         showModal('Peringatan', err.message || 'Gagal membuat project.');
     }
@@ -236,7 +127,7 @@ async function deleteProjectById(projectId) {
         return;
     }
 
-    if (!confirm(`Apakah Anda yakin ingin menghapus project '${proj.name}'? Data legenda dan jadwal terkait akan terhapus.`)) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus project '${proj.name}'? Data tipe jadwal dan konversi terkait akan terhapus.`)) {
         return;
     }
 
@@ -246,21 +137,48 @@ async function deleteProjectById(projectId) {
         if (activeProject && String(activeProject.id) === String(projectId)) {
             activeProject = projectsState[0];
         }
-        updateProjectDropdowns();
-        renderProjectList();
+        await renderProjectList();
         showModal('Sukses', `Project '${proj.name}' berhasil dihapus.`);
     } catch (err) {
         showModal('Error', err.message || 'Gagal menghapus project.');
     }
 }
 
-// ==================== LEGENDA ABSENSI FUNCTIONS ==================== //
+// ==================== MODAL 1: KELOLA TIPE JADWAL ==================== //
+
+async function openModalTipeJadwal(projectId) {
+    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
+    const nameEl = document.getElementById('modalTipeJadwalProjectName');
+    if (nameEl) nameEl.textContent = activeProject.name;
+
+    await loadLegends();
+
+    const modal = document.getElementById('modalTipeJadwal');
+    if (!modal) return;
+    const card = modal.querySelector('div');
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        if (card) card.classList.remove('scale-95');
+    }, 10);
+}
+
+function closeModalTipeJadwal() {
+    const modal = document.getElementById('modalTipeJadwal');
+    if (!modal) return;
+    const card = modal.querySelector('div');
+
+    modal.classList.add('opacity-0');
+    if (card) card.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        renderProjectList(); // Update total shift count badge on main list
+    }, 200);
+}
 
 async function loadLegends() {
-    if (!activeProject) {
-        if (projectsState.length > 0) activeProject = projectsState[0];
-        else return;
-    }
+    if (!activeProject) return;
     try {
         const legends = await ApiService.getLegends(activeProject.id);
         if (legends && Array.isArray(legends)) {
@@ -284,12 +202,12 @@ async function loadLegends() {
 }
 
 function renderLegendTable() {
-    const tbody = document.getElementById('legendTableBody');
+    const tbody = document.getElementById('tableTipeJadwalBody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
     if (legendsState.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400 text-xs">Belum ada legenda absensi untuk project ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400 text-xs">Belum ada tipe shift untuk project ini.</td></tr>`;
         return;
     }
 
@@ -297,10 +215,10 @@ function renderLegendTable() {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition';
         tr.innerHTML = `
-            <td class="px-4 py-2.5 font-bold text-indigo-900 font-mono">${l.code}</td>
-            <td class="px-4 py-2.5 text-slate-700 font-medium">${l.time_in}</td>
-            <td class="px-4 py-2.5 text-slate-700 font-medium">${l.time_out}</td>
-            <td class="px-4 py-2.5 text-center">
+            <td class="px-3.5 py-2 font-bold text-indigo-900 font-mono">${l.code}</td>
+            <td class="px-3.5 py-2 text-slate-700 font-medium">${l.time_in}</td>
+            <td class="px-3.5 py-2 text-slate-700 font-medium">${l.time_out}</td>
+            <td class="px-3.5 py-2 text-center">
                 <button onclick="deleteLegend('${l.code}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold">Hapus</button>
             </td>
         `;
@@ -309,23 +227,23 @@ function renderLegendTable() {
 }
 
 function renderQuickLegend() {
-    const containerTab2 = document.getElementById('quickLegendTab2');
-    const containerTab3 = document.getElementById('quickLegendTab3');
+    const containerTipe = document.getElementById('quickLegendTipeJadwal');
+    const containerInput = document.getElementById('quickLegendInputJadwal');
 
     const htmlContent = legendsState.length === 0
-        ? `<span class="text-rose-500 font-medium">⚠️ Belum ada legenda absensi pada project ini.</span>`
-        : `<strong class="text-indigo-900 font-bold flex-shrink-0">Kode Tersedia:</strong> ` +
+        ? `<span class="text-rose-500 font-medium">⚠️ Belum ada tipe shift pada project ini.</span>`
+        : `<strong class="text-indigo-900 font-bold flex-shrink-0">Shift Tersedia:</strong> ` +
           legendsState.map(l => 
             `<span class="bg-white border border-indigo-200/80 px-2.5 py-0.5 rounded-lg shadow-sm text-slate-800 font-mono text-[11px] font-semibold">
                 ${l.code} <span class="text-indigo-600">(${l.time_in} - ${l.time_out})</span>
             </span>`
           ).join('');
 
-    if (containerTab2) containerTab2.innerHTML = htmlContent;
-    if (containerTab3) containerTab3.innerHTML = htmlContent;
+    if (containerTipe) containerTipe.innerHTML = htmlContent;
+    if (containerInput) containerInput.innerHTML = htmlContent;
 }
 
-async function addLegend(e) {
+async function addTipeJadwal(e) {
     e.preventDefault();
     const codeEl = document.getElementById('legCode');
     const inEl = document.getElementById('legIn');
@@ -355,14 +273,14 @@ async function addLegend(e) {
         inEl.value = '';
         outEl.value = '';
 
-        showModal('Sukses', `Legenda '${code}' (${time_in} - ${time_out}) tersimpan untuk project ${activeProject.name}!`);
+        showModal('Sukses', `Tipe Shift '${code}' (${time_in} - ${time_out}) tersimpan untuk project ${activeProject.name}!`);
     } catch (err) {
-        showModal('Peringatan', err.message || 'Gagal menyimpan legenda.');
+        showModal('Peringatan', err.message || 'Gagal menyimpan tipe jadwal.');
     }
 }
 
 async function deleteLegend(code) {
-    if (!confirm(`Hapus legenda kode '${code}'?`)) return;
+    if (!confirm(`Hapus tipe shift '${code}'?`)) return;
 
     try {
         await ApiService.deleteLegend(activeProject.id, code);
@@ -370,11 +288,47 @@ async function deleteLegend(code) {
         renderLegendTable();
         renderQuickLegend();
     } catch (err) {
-        showModal('Error', err.message || 'Gagal menghapus legenda.');
+        showModal('Error', err.message || 'Gagal menghapus tipe shift.');
     }
 }
 
-// ==================== DUAL MODE INPUT JADWAL ==================== //
+// ==================== MODAL 2: INPUT & KONVERSI JADWAL ==================== //
+
+async function openModalInputJadwal(projectId) {
+    activeProject = projectsState.find(p => String(p.id) === String(projectId)) || projectsState[0];
+    const nameEl = document.getElementById('modalInputJadwalProjectName');
+    if (nameEl) nameEl.textContent = activeProject.name;
+
+    // Reset current schedule previews
+    importedScheduleData = [];
+    convertedData = [];
+    renderImportedTable();
+    renderResultTable();
+
+    await loadLegends();
+
+    const modal = document.getElementById('modalInputJadwal');
+    if (!modal) return;
+    const card = modal.querySelector('div');
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        if (card) card.classList.remove('scale-95');
+    }, 10);
+}
+
+function closeModalInputJadwal() {
+    const modal = document.getElementById('modalInputJadwal');
+    if (!modal) return;
+    const card = modal.querySelector('div');
+
+    modal.classList.add('opacity-0');
+    if (card) card.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
 
 function switchSubTab(tabId) {
     const tabUpload = document.getElementById('tabContentUpload');
@@ -583,7 +537,7 @@ function renderImportedTable() {
 
         if (importedScheduleData.length > 100) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="4" class="px-4 py-2.5 text-center text-xs text-slate-500 italic bg-slate-50">Menampilkan 100 baris pertama dari total ${importedScheduleData.length} baris.</td>`;
+            tr.innerHTML = `<td colspan="4" class="px-4 py-2 text-center text-xs text-slate-500 italic bg-slate-50">Menampilkan 100 baris pertama dari total ${importedScheduleData.length} baris.</td>`;
             tbody.appendChild(tr);
         }
     }
@@ -598,7 +552,7 @@ function processData() {
     }
 
     if (legendsState.length === 0) {
-        showModal('Peringatan', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki legenda. Tambahkan legenda di Tab 2 terlebih dahulu.`);
+        showModal('Peringatan', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki tipe shift. Tambahkan tipe shift terlebih dahulu.`);
         return;
     }
 
@@ -690,7 +644,7 @@ function showModal(title, message) {
     overlay.classList.remove('hidden');
     setTimeout(() => {
         overlay.classList.remove('opacity-0');
-        card.classList.remove('scale-95');
+        if (card) card.classList.remove('scale-95');
     }, 10);
 }
 
@@ -701,7 +655,7 @@ function closeModal() {
     if (!overlay || !card) return;
 
     overlay.classList.add('opacity-0');
-    card.classList.add('scale-95');
+    if (card) card.classList.add('scale-95');
     setTimeout(() => {
         overlay.classList.add('hidden');
     }, 200);
