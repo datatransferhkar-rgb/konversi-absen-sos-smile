@@ -60,6 +60,17 @@ function getPeriodInfo(dateStr) {
     };
 }
 
+// Helper to normalize date string format for comparison
+function normalizeDateStr(dStr) {
+    if (!dStr) return '';
+    const info = getPeriodInfo(dStr);
+    const d = new Date(dStr);
+    if (!isNaN(d.getTime())) {
+        return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    }
+    return String(dStr).trim();
+}
+
 // ==================== MASTER PROJECT DASHBOARD ==================== //
 
 async function loadProjects() {
@@ -598,7 +609,23 @@ async function handleFileUpload(event) {
 
         importedScheduleData = parsed;
         renderImportedTable();
-        showModal('Berhasil', `Memuat ${importedScheduleData.length} slot jadwal dari file Excel (${file.name}).`);
+
+        // Perform history status check count
+        let newCount = 0;
+        let updateCount = 0;
+        importedScheduleData.forEach(d => {
+            const isExist = savedSchedulesHistory.some(h => {
+                const hNik = String(h.nik || h.EmployeeNIK).trim();
+                const hDate = normalizeDateStr(h.date || h.Date);
+                const dNik = String(d.nik).trim();
+                const dDate = normalizeDateStr(d.tanggal);
+                return hNik === dNik && hDate === dDate;
+            });
+            if (isExist) updateCount++;
+            else newCount++;
+        });
+
+        showModal('Berhasil Membaca File Excel', `Memuat ${importedScheduleData.length} slot jadwal dari file Excel (${file.name}).\n\n📌 Hasil Pengecekan Riwayat:\n• Data Baru: ${newCount} slot\n• Update Data (Sudah Ada di Riwayat): ${updateCount} slot\n\nKlik "⚡ Proses Konversi" lalu "💾 Simpan Ke Riwayat".`);
     } catch (err) {
         console.error('Upload Error:', err);
         showModal('Error', 'Terjadi kesalahan saat membaca file Excel.');
@@ -762,18 +789,34 @@ function renderImportedTable() {
         displayData.forEach(d => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50 transition';
+
+            // History check for NIK and Date
+            const dNik = String(d.nik).trim();
+            const dDate = normalizeDateStr(d.tanggal);
+
+            const isExistInHistory = savedSchedulesHistory.some(h => {
+                const hNik = String(h.nik || h.EmployeeNIK).trim();
+                const hDate = normalizeDateStr(h.date || h.Date);
+                return hNik === dNik && hDate === dDate;
+            });
+
+            const statusBadgeHTML = isExistInHistory
+                ? `<span class="bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Update (Perubahan)</span>`
+                : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Baru</span>`;
+
             tr.innerHTML = `
                 <td class="px-4 py-2 border-r border-slate-100 font-semibold text-slate-800">${d.nik}</td>
                 <td class="px-4 py-2 border-r border-slate-100 text-slate-600">${d.nama}</td>
                 <td class="px-4 py-2 border-r border-slate-100 text-slate-600">${d.tanggal}</td>
-                <td class="px-4 py-2 text-center text-indigo-700 font-mono font-bold">${d.kode}</td>
+                <td class="px-4 py-2 border-r border-slate-100 text-center text-indigo-700 font-mono font-bold">${d.kode}</td>
+                <td class="px-4 py-2 text-center">${statusBadgeHTML}</td>
             `;
             tbody.appendChild(tr);
         });
 
         if (importedScheduleData.length > 100) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="4" class="px-4 py-2 text-center text-xs text-slate-500 italic bg-slate-50">Menampilkan 100 baris pertama dari total ${importedScheduleData.length} baris.</td>`;
+            tr.innerHTML = `<td colspan="5" class="px-4 py-2 text-center text-xs text-slate-500 italic bg-slate-50">Menampilkan 100 baris pertama dari total ${importedScheduleData.length} baris.</td>`;
             tbody.appendChild(tr);
         }
     }
@@ -805,7 +848,7 @@ function processData() {
     if (errors.length > 0) {
         showModal('Peringatan Konversi', `Berhasil mengkonversi ${convertedData.length} data.\n\nGagal ${errors.length} data karena kode tidak sesuai:\n` + errors.slice(0, 5).join('\n') + (errors.length > 5 ? '\n...' : ''));
     } else {
-        showModal('Berhasil', `Berhasil mengkonversi ${convertedData.length} baris jadwal ke format system! Silakan export ke Excel atau simpan data.`);
+        showModal('Berhasil Konversi', `Berhasil mengkonversi ${convertedData.length} baris jadwal ke format system!\n\nKlik tombol "💾 Simpan Ke Riwayat" untuk menyimpan dan mengupdate riwayat data.`);
     }
 }
 
@@ -837,22 +880,54 @@ function renderResultTable() {
 
 async function saveToSQLite() {
     if (!convertedData || convertedData.length === 0) {
-        showModal('Peringatan', 'Tidak ada data konversi yang dapat disimpan.');
+        showModal('Peringatan', 'Tidak ada data konversi yang dapat disimpan. Silakan klik "⚡ Proses Konversi" terlebih dahulu.');
         return;
     }
 
     try {
-        const items = convertedData.map(c => ({
-            nik: c.EmployeeNIK,
-            name: '-',
-            date: c.Date,
-            code: c.originalCode || 'P',
-            converted_code: c.ScheduleCode
-        }));
+        let newCount = 0;
+        let updateCount = 0;
 
-        await ApiService.saveSchedules(activeProject ? activeProject.id : 1, items, false); // false = append to history without wiping other months!
+        // Perform intelligent upsert against savedSchedulesHistory
+        const historyCopy = [...savedSchedulesHistory];
+
+        convertedData.forEach(item => {
+            const itemNik = String(item.EmployeeNIK).trim();
+            const itemDate = normalizeDateStr(item.Date);
+
+            const existingIdx = historyCopy.findIndex(h => {
+                const hNik = String(h.nik || h.EmployeeNIK).trim();
+                const hDate = normalizeDateStr(h.date || h.Date);
+                return hNik === itemNik && hDate === itemDate;
+            });
+
+            const newItemObj = {
+                nik: item.EmployeeNIK,
+                name: '-',
+                date: item.Date,
+                code: item.originalCode || 'P',
+                converted_code: item.ScheduleCode
+            };
+
+            if (existingIdx >= 0) {
+                historyCopy[existingIdx] = newItemObj;
+                updateCount++;
+            } else {
+                historyCopy.push(newItemObj);
+                newCount++;
+            }
+        });
+
+        await ApiService.saveSchedules(activeProject ? activeProject.id : 1, historyCopy, true);
         await loadSavedSchedulesHistory();
-        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject ? activeProject.name : ''}! Silakan cek di tab 'Riwayat Data Tersimpan (Per Bulan)'.`);
+
+        showModal(
+            'Berhasil Menyimpan Ke Riwayat!',
+            `Pengecekan Data Riwayat Selesai:\n` +
+            `• Data Baru: ${newCount} baris ditambahkan\n` +
+            `• Update Data: ${updateCount} baris diperbarui (NIK & Tanggal Sama)\n\n` +
+            `Seluruh data berhasil disinkronkan ke tab "Riwayat Data Tersimpan (Per Bulan)".`
+        );
     } catch (err) {
         showModal('Error Database', err.message || 'Gagal menyimpan data.');
     }

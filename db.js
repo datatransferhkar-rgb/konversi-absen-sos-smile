@@ -46,13 +46,14 @@ db.serialize(() => {
             code TEXT NOT NULL,
             converted_code TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            UNIQUE(project_id, nik, date)
         )
     `);
 
     // Seed Data Default jika belum ada project
     db.get(`SELECT COUNT(*) as count FROM projects`, (err, row) => {
-        if (!err && row.count === 0) {
+        if (!err && row && row.count === 0) {
             db.run(`INSERT INTO projects (name) VALUES ('Default Project')`, function(err) {
                 if (!err) {
                     const defaultProjectId = this.lastID;
