@@ -71,46 +71,99 @@ function parseExcelFile(file) {
 }
 
 function formatDateForSystem(dateStr) {
-    let d;
-    // Cek jika header dibaca sebagai Excel Serial Number oleh sheetJS
-    if (!isNaN(dateStr) && !isNaN(parseFloat(dateStr))) {
-        d = new Date(Math.round((parseFloat(dateStr) - 25569) * 86400 * 1000));
-    } else {
-        d = new Date(dateStr);
+    if (!dateStr) return '';
+    const str = String(dateStr).trim();
+    
+    // Handle numeric Excel serial date
+    if (!isNaN(str) && !isNaN(parseFloat(str)) && parseFloat(str) > 30000) {
+        const d = new Date(Math.round((parseFloat(str) - 25569) * 86400 * 1000));
+        if (!isNaN(d.getTime())) {
+            return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+        }
     }
 
-    if (isNaN(d.getTime())) return dateStr;
+    // Handle M/D/YY or M/D/YYYY (e.g. 7/1/26 -> 7/1/2026)
+    const parts = str.split(/[\/\-]/);
+    if (parts.length === 3) {
+        let month = parseInt(parts[0], 10);
+        let day = parseInt(parts[1], 10);
+        let year = parseInt(parts[2], 10);
+        if (year < 100) year += 2000; // Convert 26 -> 2026
+        if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+            return `${month}/${day}/${year}`;
+        }
+    }
 
-    // Return format M/D/YYYY (contoh: 8/1/2026)
-    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    }
+
+    return str;
 }
+
+// Default Fallback Shift Types
+const DEFAULT_FALLBACK_LEGENDS = [
+    { code: 'P', time_in: '07:00', time_out: '15:00' },
+    { code: 'M', time_in: '15:00', time_out: '23:00' },
+    { code: 'L', time_in: '23:00', time_out: '07:00' },
+    { code: 'P8', time_in: '08:00', time_out: '15:00' },
+    { code: 'P9', time_in: '09:00', time_out: '16:00' },
+    { code: 'OFF', time_in: '00:00', time_out: '00:00' },
+    { code: 'LIBUR', time_in: '00:00', time_out: '00:00' },
+    { code: 'LBR', time_in: '00:00', time_out: '00:00' }
+];
 
 function convertSchedules(importedScheduleData, legends) {
     const converted = [];
     const errors = [];
 
+    // Combine project-specific legends with default fallback legends
+    const activeLegends = (legends && legends.length > 0) ? legends : DEFAULT_FALLBACK_LEGENDS;
+
     importedScheduleData.forEach((entry, index) => {
-        const legend = legends.find(l => l.code.toUpperCase() === entry.kode.toUpperCase());
+        const inputCode = String(entry.kode || '').trim().toUpperCase();
+
+        // 1. Search in project legends
+        let legend = activeLegends.find(l => String(l.code).toUpperCase() === inputCode);
+
+        // 2. If not found in project legends, search in default fallback legends
+        if (!legend) {
+            legend = DEFAULT_FALLBACK_LEGENDS.find(l => String(l.code).toUpperCase() === inputCode);
+        }
+
+        let scheduleCode = '';
 
         if (legend) {
-            // S + Jam Masuk (tanpa titik dua) + Jam Pulang (tanpa titik dua)
-            const inTimeRaw = legend.time_in.replace(':', '');
-            const outTimeRaw = legend.time_out.replace(':', '');
-            const scheduleCode = `S${inTimeRaw}${outTimeRaw}`;
-
-            converted.push({
-                Date: formatDateForSystem(entry.tanggal),
-                EmployeeNIK: entry.nik,
-                ScheduleCode: scheduleCode,
-                originalCode: entry.kode
-            });
+            const inTimeRaw = String(legend.time_in || '07:00').replace(':', '');
+            const outTimeRaw = String(legend.time_out || '15:00').replace(':', '');
+            scheduleCode = `S${inTimeRaw}${outTimeRaw}`;
+        } else if (inputCode.startsWith('S') && inputCode.length >= 7) {
+            // Already formatted system code (e.g. S07001500)
+            scheduleCode = inputCode;
         } else {
-            errors.push(`Baris Ke-${index + 1} (NIK: ${entry.nik}, Tgl: ${entry.tanggal}): Kode '${entry.kode}' tidak ada di legenda.`);
+            // Fallback for custom undefined shift codes so NO DATA IS DROPPED!
+            scheduleCode = `S_${inputCode}`;
+            errors.push(`Shift '${inputCode}' tidak ada di legenda (dikonversi otomatis sebagai ${scheduleCode}).`);
         }
+
+        converted.push({
+            Date: formatDateForSystem(entry.tanggal),
+            EmployeeNIK: entry.nik,
+            ScheduleCode: scheduleCode,
+            originalCode: entry.kode
+        });
     });
 
-    // Urutkan berdasarkan tanggal lalu NIK
-    converted.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+    // Sort by Date then NIK for clean ordering
+    converted.sort((a, b) => {
+        const dA = new Date(a.Date);
+        const dB = new Date(b.Date);
+        if (!isNaN(dA.getTime()) && !isNaN(dB.getTime())) {
+            return dA - dB;
+        }
+        return String(a.Date).localeCompare(String(b.Date));
+    });
 
     return { converted, errors };
 }

@@ -63,12 +63,8 @@ function getPeriodInfo(dateStr) {
 // Helper to normalize date string format for comparison
 function normalizeDateStr(dStr) {
     if (!dStr) return '';
-    const info = getPeriodInfo(dStr);
-    const d = new Date(dStr);
-    if (!isNaN(d.getTime())) {
-        return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-    }
-    return String(dStr).trim();
+    const str = String(dStr).trim();
+    return formatDateForSystem(str);
 }
 
 // ==================== MASTER PROJECT DASHBOARD ==================== //
@@ -274,7 +270,7 @@ function renderQuickLegend() {
     const containerInput = document.getElementById('quickLegendInputJadwal');
 
     const htmlContent = legendsState.length === 0
-        ? `<span class="text-rose-500 font-medium">⚠️ Belum ada tipe shift pada project ini.</span>`
+        ? `<span class="text-indigo-900 font-bold flex-shrink-0">Shift Default Active:</span> <span class="bg-white border border-indigo-200/80 px-2 py-0.5 rounded text-slate-700 font-mono text-[11px]">P, M, L (Default System)</span>`
         : `<strong class="text-indigo-900 font-bold flex-shrink-0">Shift Tersedia:</strong> ` +
           legendsState.map(l => 
             `<span class="bg-white border border-indigo-200/80 px-2.5 py-0.5 rounded-lg shadow-sm text-slate-800 font-mono text-[11px] font-semibold">
@@ -768,7 +764,7 @@ function saveManualData() {
 
     importedScheduleData = newData;
     renderImportedTable();
-    showModal('Berhasil', `${newData.length} slot jadwal disimpan ke antrean preview.`);
+    showModal('Berhasil', `${newData.length} slot jadwal dimasukkan ke Antrean. Klik "⚡ Proses Konversi" untuk melihat hasil konversi.`);
 }
 
 function renderImportedTable() {
@@ -830,11 +826,6 @@ function processData() {
         return;
     }
 
-    if (legendsState.length === 0) {
-        showModal('Peringatan', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki tipe shift. Tambahkan tipe shift terlebih dahulu.`);
-        return;
-    }
-
     const { converted, errors } = convertSchedules(importedScheduleData, legendsState);
     convertedData = converted;
 
@@ -846,9 +837,9 @@ function processData() {
     }
 
     if (errors.length > 0) {
-        showModal('Peringatan Konversi', `Berhasil mengkonversi ${convertedData.length} data.\n\nGagal ${errors.length} data karena kode tidak sesuai:\n` + errors.slice(0, 5).join('\n') + (errors.length > 5 ? '\n...' : ''));
+        showModal('Berhasil Konversi', `Berhasil mengkonversi seluruh ${convertedData.length} data jadwal!\n\nCatatan:\n` + errors.slice(0, 3).join('\n') + (errors.length > 3 ? '\n...' : ''));
     } else {
-        showModal('Berhasil Konversi', `Berhasil mengkonversi ${convertedData.length} baris jadwal ke format system!\n\nKlik tombol "💾 Simpan Ke Riwayat" untuk menyimpan dan mengupdate riwayat data.`);
+        showModal('Berhasil Konversi', `Berhasil mengkonversi seluruh ${convertedData.length} baris jadwal ke format system!\n\nKlik tombol "💾 Simpan Ke Riwayat" untuk menyimpan dan mengupdate riwayat data.`);
     }
 }
 
