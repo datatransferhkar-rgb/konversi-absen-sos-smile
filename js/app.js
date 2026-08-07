@@ -391,6 +391,22 @@ async function handleFileUpload(event) {
     event.target.value = '';
 }
 
+// Helper to generate select dropdown options based on registered shift types in legendsState
+function getShiftOptionsHTML() {
+    let optionsHtml = `<option value="">-</option>`;
+    if (legendsState && legendsState.length > 0) {
+        legendsState.forEach(l => {
+            optionsHtml += `<option value="${l.code}">${l.code} (${l.time_in}-${l.time_out})</option>`;
+        });
+    } else {
+        // Fallback default options
+        optionsHtml += `<option value="P">P (07:00-15:00)</option>`;
+        optionsHtml += `<option value="M">M (15:00-23:00)</option>`;
+        optionsHtml += `<option value="L">L (23:00-07:00)</option>`;
+    }
+    return optionsHtml;
+}
+
 // Manual Calendar Matrix Grid
 function initManualGrid() {
     const monthPicker = document.getElementById('manualMonthPicker');
@@ -433,7 +449,7 @@ function renderManualGridHeaders() {
         const isWeekend = d.getDay() === 0 || d.getDay() === 6;
         const bgClass = isWeekend ? 'bg-rose-100 text-rose-800 font-bold' : 'text-slate-700';
 
-        html += `<th class="px-2 py-2 w-14 text-center border-r border-slate-200 ${bgClass}">${i}</th>`;
+        html += `<th class="px-2 py-2 min-w-[64px] text-center border-r border-slate-200 ${bgClass}">${i}</th>`;
     }
 
     tr.innerHTML = html;
@@ -454,6 +470,8 @@ function addManualRow() {
         </td>
     `;
 
+    const optionsHtml = getShiftOptionsHTML();
+
     for (let i = 1; i <= manualDaysCount; i++) {
         const dateStr = `${currentManualYear}/${currentManualMonth}/${String(i).padStart(2, '0')}`;
         const d = new Date(currentManualYear, parseInt(currentManualMonth) - 1, i);
@@ -461,8 +479,10 @@ function addManualRow() {
         const bgClass = isWeekend ? 'bg-rose-50' : '';
 
         html += `
-            <td class="p-1 min-w-[56px] border-r border-slate-200 ${bgClass}">
-                <input type="text" class="w-full h-8 border-0 bg-transparent text-center uppercase font-mono font-bold text-indigo-700 manual-code focus:bg-white focus:ring-2 focus:ring-indigo-500 rounded" data-date="${dateStr}" maxlength="3">
+            <td class="p-1 min-w-[64px] border-r border-slate-200 ${bgClass}">
+                <select class="w-full h-8 border border-slate-200 bg-white text-center font-mono font-bold text-indigo-700 manual-code focus:ring-2 focus:ring-indigo-500 rounded text-xs cursor-pointer" data-date="${dateStr}">
+                    ${optionsHtml}
+                </select>
             </td>
         `;
     }
@@ -484,14 +504,14 @@ function saveManualData() {
         const nama = namaInput.value.trim();
         if (!nik) return;
 
-        const codeInputs = row.querySelectorAll('.manual-code');
-        codeInputs.forEach(input => {
-            const kode = input.value.trim().toUpperCase();
+        const codeSelects = row.querySelectorAll('.manual-code');
+        codeSelects.forEach(select => {
+            const kode = select.value.trim().toUpperCase();
             if (kode) {
                 newData.push({
                     nik: nik,
                     nama: nama || '-',
-                    tanggal: input.getAttribute('data-date'),
+                    tanggal: select.getAttribute('data-date'),
                     kode: kode
                 });
             }
@@ -499,7 +519,7 @@ function saveManualData() {
     });
 
     if (newData.length === 0) {
-        showModal('Peringatan', 'Tidak ada data jadwal yang dapat disimpan. Pastikan NIK dan Kode diisi.');
+        showModal('Peringatan', 'Tidak ada data jadwal yang dapat disimpan. Pastikan NIK dan Pilihan Shift diisi.');
         return;
     }
 
@@ -547,7 +567,7 @@ function renderImportedTable() {
 
 function processData() {
     if (importedScheduleData.length === 0) {
-        showModal('Peringatan', 'Tidak ada data jadwal untuk diproses. Upload file Excel atau isi grid manual.');
+        showModal('Peringatan', 'Tidak ada data jadwal untuk diproses. Upload file Excel atau pilih shift di grid manual.');
         return;
     }
 
