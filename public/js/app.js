@@ -29,6 +29,37 @@ async function initApp() {
     await loadProjects();
 }
 
+// Helper to extract period key (e.g., '2026-08') and label (e.g., 'Agustus 2026') from date string
+function getPeriodInfo(dateStr) {
+    if (!dateStr) return { key: 'UNKNOWN', label: 'Lainnya' };
+
+    let d = new Date(dateStr);
+    if (isNaN(d.getTime())) {
+        // Fallback parse M/D/YYYY or YYYY/MM/DD
+        const parts = String(dateStr).split(/[\/\-]/);
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                // YYYY/MM/DD
+                d = new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
+            } else {
+                // M/D/YYYY
+                d = new Date(parts[2], parseInt(parts[0]) - 1, parts[1]);
+            }
+        }
+    }
+
+    if (isNaN(d.getTime())) return { key: 'UNKNOWN', label: 'Lainnya' };
+
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const monthName = monthNames[d.getMonth()];
+    return {
+        key: `${yyyy}-${mm}`,
+        label: `${monthName} ${yyyy}`
+    };
+}
+
 // ==================== MASTER PROJECT DASHBOARD ==================== //
 
 async function loadProjects() {
@@ -393,30 +424,83 @@ async function loadSavedSchedulesHistory() {
     try {
         const history = await ApiService.getSchedules(activeProject.id);
         savedSchedulesHistory = history || [];
+        populateHistoryMonthFilter();
         renderSavedHistoryTable();
     } catch (err) {
         console.error('Error loading saved schedules history:', err);
     }
 }
 
+function populateHistoryMonthFilter() {
+    const filterSelect = document.getElementById('historyMonthFilter');
+    if (!filterSelect) return;
+
+    const currentVal = filterSelect.value || 'ALL';
+    filterSelect.innerHTML = `<option value="ALL">Semua Bulan</option>`;
+
+    if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) return;
+
+    // Collect unique periods
+    const periodsMap = new Map();
+    savedSchedulesHistory.forEach(item => {
+        const dateStr = item.date || item.Date;
+        const info = getPeriodInfo(dateStr);
+        if (info.key !== 'UNKNOWN') {
+            periodsMap.set(info.key, info.label);
+        }
+    });
+
+    // Sort periods descending (most recent first)
+    const sortedKeys = Array.from(periodsMap.keys()).sort().reverse();
+
+    sortedKeys.forEach(key => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = periodsMap.get(key);
+        if (key === currentVal) opt.selected = true;
+        filterSelect.appendChild(opt);
+    });
+}
+
 function renderSavedHistoryTable() {
     const tbody = document.getElementById('savedHistoryTableBody');
     const emptyMsg = document.getElementById('emptyHistoryMsg');
     const badge = document.getElementById('savedHistoryCountBadge');
+    const filterSelect = document.getElementById('historyMonthFilter');
 
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (badge) badge.textContent = `${savedSchedulesHistory.length} Data Tersimpan`;
+    const selectedPeriod = filterSelect ? filterSelect.value : 'ALL';
 
-    if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) {
+    // Filter items by selected period
+    let filtered = savedSchedulesHistory;
+    if (selectedPeriod && selectedPeriod !== 'ALL') {
+        filtered = savedSchedulesHistory.filter(item => {
+            const dateStr = item.date || item.Date;
+            const info = getPeriodInfo(dateStr);
+            return info.key === selectedPeriod;
+        });
+    }
+
+    if (badge) {
+        if (selectedPeriod === 'ALL') {
+            badge.textContent = `${filtered.length} Data Tersimpan (Semua Bulan)`;
+        } else {
+            const selectedOpt = filterSelect.options[filterSelect.selectedIndex];
+            const monthLabel = selectedOpt ? selectedOpt.textContent : selectedPeriod;
+            badge.textContent = `${filtered.length} Data Tersimpan (${monthLabel})`;
+        }
+    }
+
+    if (!filtered || filtered.length === 0) {
         if (emptyMsg) emptyMsg.classList.remove('hidden');
         return;
     }
 
     if (emptyMsg) emptyMsg.classList.add('hidden');
 
-    savedSchedulesHistory.forEach(item => {
+    filtered.forEach(item => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition';
         const dateDisplay = item.date || item.Date;
@@ -435,33 +519,65 @@ function renderSavedHistoryTable() {
 }
 
 function exportSavedHistoryExcel() {
-    if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) {
-        showModal('Peringatan', 'Tidak ada riwayat data tersimpan yang dapat diexport.');
+    const filterSelect = document.getElementById('historyMonthFilter');
+    const selectedPeriod = filterSelect ? filterSelect.value : 'ALL';
+
+    let filtered = savedSchedulesHistory;
+    if (selectedPeriod && selectedPeriod !== 'ALL') {
+        filtered = savedSchedulesHistory.filter(item => {
+            const dateStr = item.date || item.Date;
+            const info = getPeriodInfo(dateStr);
+            return info.key === selectedPeriod;
+        });
+    }
+
+    if (!filtered || filtered.length === 0) {
+        showModal('Peringatan', 'Tidak ada riwayat data tersimpan pada periode ini yang dapat diexport.');
         return;
     }
 
-    const formattedData = savedSchedulesHistory.map(item => ({
+    const formattedData = filtered.map(item => ({
         Date: item.date || item.Date,
         EmployeeNIK: item.nik || item.EmployeeNIK,
         ScheduleCode: item.converted_code || item.ScheduleCode
     }));
 
-    generateExcelFile(formattedData, activeProject ? activeProject.name + '_Riwayat' : 'Riwayat_Jadwal');
+    const periodLabel = selectedPeriod === 'ALL' ? 'Semua_Bulan' : selectedPeriod;
+    generateExcelFile(formattedData, activeProject ? activeProject.name + '_Riwayat_' + periodLabel : 'Riwayat_Jadwal_' + periodLabel);
 }
 
 async function clearSavedHistory() {
+    const filterSelect = document.getElementById('historyMonthFilter');
+    const selectedPeriod = filterSelect ? filterSelect.value : 'ALL';
+
     if (!savedSchedulesHistory || savedSchedulesHistory.length === 0) {
         showModal('Peringatan', 'Belum ada riwayat data tersimpan.');
         return;
     }
 
-    if (!confirm(`Apakah Anda yakin ingin menghapus seluruh riwayat data jadwal tersimpan untuk project '${activeProject.name}'?`)) {
-        return;
+    let confirmMsg = `Apakah Anda yakin ingin menghapus seluruh riwayat data jadwal tersimpan untuk project '${activeProject.name}'?`;
+    if (selectedPeriod !== 'ALL') {
+        const selectedOpt = filterSelect.options[filterSelect.selectedIndex];
+        const monthLabel = selectedOpt ? selectedOpt.textContent : selectedPeriod;
+        confirmMsg = `Apakah Anda yakin ingin menghapus riwayat data jadwal untuk periode '${monthLabel}' pada project '${activeProject.name}'?`;
     }
 
+    if (!confirm(confirmMsg)) return;
+
     try {
-        await ApiService.saveSchedules(activeProject.id, [], true);
-        savedSchedulesHistory = [];
+        let updatedHistory = [];
+        if (selectedPeriod !== 'ALL') {
+            // Keep items from other months
+            updatedHistory = savedSchedulesHistory.filter(item => {
+                const dateStr = item.date || item.Date;
+                const info = getPeriodInfo(dateStr);
+                return info.key !== selectedPeriod;
+            });
+        }
+
+        await ApiService.saveSchedules(activeProject.id, updatedHistory, true);
+        savedSchedulesHistory = updatedHistory;
+        populateHistoryMonthFilter();
         renderSavedHistoryTable();
         showModal('Sukses', 'Riwayat data jadwal tersimpan berhasil dibersihkan.');
     } catch (err) {
@@ -734,9 +850,9 @@ async function saveToSQLite() {
             converted_code: c.ScheduleCode
         }));
 
-        await ApiService.saveSchedules(activeProject ? activeProject.id : 1, items, true);
+        await ApiService.saveSchedules(activeProject ? activeProject.id : 1, items, false); // false = append to history without wiping other months!
         await loadSavedSchedulesHistory();
-        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject ? activeProject.name : ''}! Silakan cek di tab 'Riwayat Data Tersimpan'.`);
+        showModal('Sukses Database', `${items.length} riwayat jadwal berhasil disimpan untuk project ${activeProject ? activeProject.name : ''}! Silakan cek di tab 'Riwayat Data Tersimpan (Per Bulan)'.`);
     } catch (err) {
         showModal('Error Database', err.message || 'Gagal menyimpan data.');
     }
