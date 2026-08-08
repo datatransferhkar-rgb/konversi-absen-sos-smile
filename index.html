@@ -379,15 +379,12 @@
                 <!-- Preview Hasil Konversi Table & Actions -->
                 <div class="space-y-2">
                     <div class="flex justify-between items-center flex-wrap gap-2">
-                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Preview Hasil Konversi System Upload:</h4>
+                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Preview Hasil Konversi Input Jadwal:</h4>
                         
                         <div class="flex items-center gap-2">
                             <span id="resultCountBadge" class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100">
                                 0 Baris Terkonversi
                             </span>
-                            <button id="btnProcessData" onclick="processData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm shadow-indigo-200">
-                                ⚡ Proses Konversi
-                            </button>
                             <button id="btnSaveToDb" onclick="saveToSQLite()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm shadow-emerald-200 hidden">
                                 💾 Simpan Ke Riwayat
                             </button>
@@ -410,7 +407,7 @@
                             </tbody>
                         </table>
                         <div id="emptyResultMsg" class="text-center py-6 text-slate-400 text-xs font-medium">
-                            Klik "⚡ Proses Konversi" untuk melihat hasil konversi standar upload system.
+                            Upload file Excel atau buat Grid Kalender untuk melihat hasil konversi.
                         </div>
                     </div>
                 </div>

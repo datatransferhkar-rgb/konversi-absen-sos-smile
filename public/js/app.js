@@ -601,6 +601,9 @@ async function handleFileUpload(event) {
         importedScheduleData = parsed;
         renderImportedTable();
 
+        // Auto process conversion for Excel Upload!
+        processData();
+
         // Perform history status check count
         let newCount = 0;
         let updateCount = 0;
@@ -616,7 +619,7 @@ async function handleFileUpload(event) {
             else newCount++;
         });
 
-        showModal('Berhasil Membaca File Excel', `Memuat ${importedScheduleData.length} slot jadwal dari file Excel (${file.name}).\n\n📌 Hasil Pengecekan Riwayat:\n• Data Baru: ${newCount} slot\n• Update Data (Sudah Ada di Riwayat): ${updateCount} slot\n\nKlik "⚡ Proses Konversi" untuk memvalidasi tipe shift.`);
+        showModal('Berhasil Membaca File Excel', `Memuat ${importedScheduleData.length} slot jadwal dari file Excel (${file.name}).\n\n📌 Hasil Pengecekan Riwayat:\n• Data Baru: ${newCount} slot\n• Update Data (Sudah Ada di Riwayat): ${updateCount} slot\n\nHasil konversi telah otomatis ditampilkan di tabel Preview Hasil Konversi Input Jadwal.`);
     } catch (err) {
         console.error('Upload Error:', err);
         showModal('Error', 'Terjadi kesalahan saat membaca file Excel.');
@@ -908,8 +911,6 @@ function processData() {
             `⚠️ Terdapat ${errors.length} data GAGAL dikonversi karena kode shift TIDAK TERDAFTAR pada project '${activeProject.name}':\n\n` +
             errors.slice(0, 8).join('\n') + (errors.length > 8 ? '\n...' : '')
         );
-    } else {
-        showModal('Berhasil Konversi', `Berhasil mengkonversi seluruh ${convertedData.length} baris jadwal ke format system!\n\nKlik tombol "💾 Simpan Ke Riwayat" untuk menyimpan dan mengupdate riwayat data.`);
     }
 }
 
@@ -941,7 +942,7 @@ function renderResultTable() {
 
 async function saveToSQLite() {
     if (!convertedData || convertedData.length === 0) {
-        showModal('Peringatan', 'Tidak ada data konversi yang dapat disimpan. Silakan klik "⚡ Proses Konversi" terlebih dahulu.');
+        showModal('Peringatan', 'Tidak ada data konversi yang dapat disimpan. Silakan upload Excel atau proses Grid terlebih dahulu.');
         return;
     }
 
@@ -1001,7 +1002,7 @@ async function saveToSQLite() {
 
 function exportToExcel() {
     if (convertedData.length === 0) {
-        showModal('Peringatan', "Belum ada hasil konversi. Klik '⚡ Proses Konversi' terlebih dahulu.");
+        showModal('Peringatan', "Belum ada hasil konversi. Upload Excel atau proses Grid terlebih dahulu.");
         return;
     }
     generateExcelFile(convertedData, activeProject ? activeProject.name : 'Project');
