@@ -628,13 +628,13 @@ async function handleFileUpload(event) {
     event.target.value = '';
 }
 
-// Helper to generate select dropdown options strictly from registered shift types in legendsState
+// Helper to generate select dropdown options strictly displaying ONLY the shift code (no time text)
 function getShiftOptionsHTML(selectedCode = '') {
     let optionsHtml = `<option value="">-</option>`;
     if (legendsState && legendsState.length > 0) {
         legendsState.forEach(l => {
             const isSel = String(l.code).toUpperCase() === String(selectedCode).toUpperCase() ? 'selected' : '';
-            optionsHtml += `<option value="${l.code}" ${isSel}>${l.code} (${l.time_in}-${l.time_out})</option>`;
+            optionsHtml += `<option value="${l.code}" ${isSel}>${l.code}</option>`;
         });
     } else {
         optionsHtml = `<option value="">⚠️ Tambah Tipe Shift Dahulu</option>`;
