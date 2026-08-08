@@ -32,27 +32,41 @@ async function initApp() {
     await loadProjects();
 }
 
-// Helper to extract period key (e.g., '2026-08') and label (e.g., 'Agustus 2026') from date string
+// Robust helper to extract period key (e.g., '2026-08') and label (e.g., 'Agustus 2026') from any date format
 function getPeriodInfo(dateStr) {
     if (!dateStr) return { key: 'UNKNOWN', label: 'Lainnya' };
 
-    const formatted = formatDateForSystem(dateStr); // e.g. "8/3/2026"
-    const parts = formatted.split('/');
+    const str = String(dateStr).trim();
+    const parts = str.split(/[\/\-]/);
+    let year = 0, month = 0;
+
     if (parts.length === 3) {
-        const month = parseInt(parts[0], 10);
-        const day = parseInt(parts[1], 10);
-        const year = parseInt(parts[2], 10);
-        if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
-            const yyyy = year;
-            const mm = String(month).padStart(2, '0');
-            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            const monthName = monthNames[month - 1];
-            return {
-                key: `${yyyy}-${mm}`,
-                label: `${monthName} ${yyyy}`
-            };
+        if (parts[0].length === 4) {
+            // e.g. "2026/8/3" or "2026-08-03"
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+        } else if (parts[2].length === 4) {
+            // e.g. "8/3/2026" or "08-03-2026"
+            month = parseInt(parts[0], 10);
+            year = parseInt(parts[2], 10);
+        } else if (parts[2].length === 2) {
+            // e.g. "8/3/26"
+            month = parseInt(parts[0], 10);
+            year = parseInt(parts[2], 10) + 2000;
         }
     }
+
+    if (month >= 1 && month <= 12 && year >= 2000 && year <= 2100) {
+        const yyyy = year;
+        const mm = String(month).padStart(2, '0');
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        const monthName = monthNames[month - 1];
+        return {
+            key: `${yyyy}-${mm}`,
+            label: `${monthName} ${yyyy}`
+        };
+    }
+
     return { key: 'UNKNOWN', label: 'Lainnya' };
 }
 
@@ -645,22 +659,21 @@ function getShiftOptionsHTML(selectedCode = '') {
     return optionsHtml;
 }
 
-// Manual Calendar Matrix Grid (With Safari & Chrome Universal Month/Year Selects)
+// Manual Calendar Matrix Grid (ALWAYS auto-renders grid for both saved & new empty months)
 function initManualGrid() {
     const monthSelect = document.getElementById('manualMonthSelect');
     const yearSelect = document.getElementById('manualYearSelect');
+    const container = document.getElementById('manualGridContainer');
     if (!monthSelect || !yearSelect) return;
 
-    if (!legendsState || legendsState.length === 0) {
-        showModal('Peringatan Tipe Shift', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki Tipe Shift terdaftar. Silakan tambahkan Tipe Shift terlebih dahulu pada tombol "📋 Tipe Jadwal".`);
-        return;
-    }
+    // ALWAYS display manual grid container
+    if (container) container.classList.remove('hidden');
 
     const year = yearSelect.value;
     const month = String(monthSelect.value).padStart(2, '0');
     currentManualYear = year;
     currentManualMonth = month;
-    manualDaysCount = new Date(year, month, 0).getDate();
+    manualDaysCount = new Date(year, parseInt(month, 10), 0).getDate();
 
     renderManualGridHeaders();
 
@@ -707,14 +720,11 @@ function initManualGrid() {
             addManualRowWithData(emp.nik, displayNama, emp.shifts);
         });
     } else {
-        // Render 3 empty default rows
+        // Render 3 empty default rows for new/empty month
         addManualRow();
         addManualRow();
         addManualRow();
     }
-
-    const container = document.getElementById('manualGridContainer');
-    if (container) container.classList.remove('hidden');
 }
 
 function renderManualGridHeaders() {

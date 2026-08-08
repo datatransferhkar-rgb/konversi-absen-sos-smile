@@ -84,9 +84,9 @@ function formatDateForSystem(dateStr) {
 
     const parts = str.split(/[\/\-]/);
     if (parts.length === 3) {
-        let year, month, day;
+        let year = 0, month = 0, day = 0;
         if (parts[0].length === 4) {
-            // YYYY/MM/DD or YYYY-MM-DD
+            // YYYY/MM/DD or YYYY/M/D
             year = parseInt(parts[0], 10);
             month = parseInt(parts[1], 10);
             day = parseInt(parts[2], 10);
@@ -98,7 +98,7 @@ function formatDateForSystem(dateStr) {
             if (year < 100) year += 2000;
         }
 
-        if (!isNaN(month) && !isNaN(day) && !isNaN(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        if (!isNaN(month) && !isNaN(day) && !isNaN(year) && month >= 1 && month <= 12) {
             return `${month}/${day}/${year}`;
         }
     }
