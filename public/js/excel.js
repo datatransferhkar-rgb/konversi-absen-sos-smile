@@ -82,14 +82,23 @@ function formatDateForSystem(dateStr) {
         }
     }
 
-    // Handle M/D/YY or M/D/YYYY (e.g. 7/1/26 -> 7/1/2026)
     const parts = str.split(/[\/\-]/);
     if (parts.length === 3) {
-        let month = parseInt(parts[0], 10);
-        let day = parseInt(parts[1], 10);
-        let year = parseInt(parts[2], 10);
-        if (year < 100) year += 2000; // Convert 26 -> 2026
-        if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+        let year, month, day;
+        if (parts[0].length === 4) {
+            // YYYY/MM/DD or YYYY-MM-DD
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+        } else {
+            // MM/DD/YYYY or M/D/YY
+            month = parseInt(parts[0], 10);
+            day = parseInt(parts[1], 10);
+            year = parseInt(parts[2], 10);
+            if (year < 100) year += 2000;
+        }
+
+        if (!isNaN(month) && !isNaN(day) && !isNaN(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
             return `${month}/${day}/${year}`;
         }
     }
@@ -140,9 +149,11 @@ function convertSchedules(importedScheduleData, legends) {
 
     // Sort by Date then NIK for clean ordering
     converted.sort((a, b) => {
-        const dA = new Date(a.Date);
-        const dB = new Date(b.Date);
-        if (!isNaN(dA.getTime()) && !isNaN(dB.getTime())) {
+        const pA = a.Date.split('/');
+        const pB = b.Date.split('/');
+        if (pA.length === 3 && pB.length === 3) {
+            const dA = new Date(pA[2], pA[0] - 1, pA[1]);
+            const dB = new Date(pB[2], pB[0] - 1, pB[1]);
             return dA - dB;
         }
         return String(a.Date).localeCompare(String(b.Date));

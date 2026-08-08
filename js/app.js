@@ -33,38 +33,30 @@ async function initApp() {
 function getPeriodInfo(dateStr) {
     if (!dateStr) return { key: 'UNKNOWN', label: 'Lainnya' };
 
-    let d = new Date(dateStr);
-    if (isNaN(d.getTime())) {
-        // Fallback parse M/D/YYYY or YYYY/MM/DD
-        const parts = String(dateStr).split(/[\/\-]/);
-        if (parts.length === 3) {
-            if (parts[0].length === 4) {
-                // YYYY/MM/DD
-                d = new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
-            } else {
-                // M/D/YYYY
-                d = new Date(parts[2], parseInt(parts[0]) - 1, parts[1]);
-            }
+    const formatted = formatDateForSystem(dateStr); // e.g. "8/3/2026"
+    const parts = formatted.split('/');
+    if (parts.length === 3) {
+        const month = parseInt(parts[0], 10);
+        const day = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
+            const yyyy = year;
+            const mm = String(month).padStart(2, '0');
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const monthName = monthNames[month - 1];
+            return {
+                key: `${yyyy}-${mm}`,
+                label: `${monthName} ${yyyy}`
+            };
         }
     }
-
-    if (isNaN(d.getTime())) return { key: 'UNKNOWN', label: 'Lainnya' };
-
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const monthName = monthNames[d.getMonth()];
-    return {
-        key: `${yyyy}-${mm}`,
-        label: `${monthName} ${yyyy}`
-    };
+    return { key: 'UNKNOWN', label: 'Lainnya' };
 }
 
 // Helper to normalize date string format for comparison
 function normalizeDateStr(dStr) {
     if (!dStr) return '';
-    const str = String(dStr).trim();
-    return formatDateForSystem(str);
+    return formatDateForSystem(dStr);
 }
 
 // ==================== MASTER PROJECT DASHBOARD ==================== //
@@ -511,7 +503,7 @@ function renderSavedHistoryTable() {
     filtered.forEach(item => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition';
-        const dateDisplay = item.date || item.Date;
+        const dateDisplay = formatDateForSystem(item.date || item.Date);
         const nikDisplay = item.nik || item.EmployeeNIK;
         const namaDisplay = item.name || item.EmployeeNama || item.nama || '-';
         const codeDisplay = item.code || item.originalCode || '-';
@@ -547,7 +539,7 @@ function exportSavedHistoryExcel() {
     }
 
     const formattedData = filtered.map(item => ({
-        Date: item.date || item.Date,
+        Date: formatDateForSystem(item.date || item.Date),
         EmployeeNIK: item.nik || item.EmployeeNIK,
         ScheduleCode: item.converted_code || item.ScheduleCode
     }));
@@ -689,11 +681,11 @@ function initManualGrid() {
             const nik = String(item.nik || item.EmployeeNIK).trim();
             const nama = item.name || item.EmployeeNama || item.nama || '';
             const code = item.code || item.originalCode || '';
-            const dStr = item.date || item.Date;
+            const dStr = formatDateForSystem(item.date || item.Date); // "M/D/YYYY"
 
             // Extract day number (e.g. 1-31)
-            const dObj = new Date(dStr);
-            let dayNum = !isNaN(dObj.getTime()) ? dObj.getDate() : parseInt(String(dStr).split(/[\/\-]/)[1]);
+            const parts = dStr.split('/');
+            let dayNum = parts.length === 3 ? parseInt(parts[1], 10) : 0;
 
             if (!employeeMap.has(nik)) {
                 employeeMap.set(nik, { nik, nama, shifts: {} });
@@ -787,7 +779,8 @@ function addManualRowWithData(nikVal = '', namaVal = '', shiftsObj = {}) {
     tbody.appendChild(tr);
 }
 
-function saveManualData() {
+// 1-Click Streamlined Grid Processing
+function processManualGridData() {
     const rows = document.querySelectorAll('#manualGridBody tr');
     const newData = [];
 
@@ -815,13 +808,23 @@ function saveManualData() {
     });
 
     if (newData.length === 0) {
-        showModal('Peringatan', 'Tidak ada data jadwal yang dapat disimpan. Pastikan NIK dan Pilihan Shift diisi.');
+        showModal('Peringatan', 'Tidak ada data jadwal yang dapat diproses. Pastikan NIK dan Pilihan Shift diisi.');
         return;
     }
 
     importedScheduleData = newData;
     renderImportedTable();
-    showModal('Berhasil', `${newData.length} slot jadwal dimasukkan ke Antrean. Klik tombol "⚡ Proses Konversi" untuk melihat hasil konversi.`);
+
+    // Ensure Queue & Preview section is visible
+    const queueSection = document.getElementById('queueAndPreviewSection');
+    if (queueSection) queueSection.classList.remove('hidden');
+
+    // Run conversion directly (1-click process!)
+    processData();
+}
+
+function saveManualData() {
+    processManualGridData();
 }
 
 function renderImportedTable() {
@@ -860,7 +863,7 @@ function renderImportedTable() {
             tr.innerHTML = `
                 <td class="px-4 py-2 border-r border-slate-100 font-semibold text-slate-800">${d.nik}</td>
                 <td class="px-4 py-2 border-r border-slate-100 text-slate-600">${d.nama}</td>
-                <td class="px-4 py-2 border-r border-slate-100 text-slate-600">${d.tanggal}</td>
+                <td class="px-4 py-2 border-r border-slate-100 text-slate-600">${formatDateForSystem(d.tanggal)}</td>
                 <td class="px-4 py-2 border-r border-slate-100 text-center text-indigo-700 font-mono font-bold">${d.kode}</td>
                 <td class="px-4 py-2 text-center">${statusBadgeHTML}</td>
             `;
