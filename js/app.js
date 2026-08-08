@@ -19,12 +19,15 @@ if (document.readyState === 'loading') {
 }
 
 async function initApp() {
-    // Set default month picker to current year-month
+    // Set default month & year dropdowns to current month & year
     const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const monthPicker = document.getElementById('manualMonthPicker');
-    if (monthPicker) monthPicker.value = `${yyyy}-${mm}`;
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+
+    const monthSelect = document.getElementById('manualMonthSelect');
+    const yearSelect = document.getElementById('manualYearSelect');
+    if (monthSelect) monthSelect.value = String(currentMonth);
+    if (yearSelect) yearSelect.value = String(currentYear);
 
     await loadProjects();
 }
@@ -642,23 +645,19 @@ function getShiftOptionsHTML(selectedCode = '') {
     return optionsHtml;
 }
 
-// Manual Calendar Matrix Grid (With History Edit Support & Name Retention)
+// Manual Calendar Matrix Grid (With Safari & Chrome Universal Month/Year Selects)
 function initManualGrid() {
-    const monthPicker = document.getElementById('manualMonthPicker');
-    const gridBtn = document.getElementById('btnBuildManualGrid');
-    if (!monthPicker) return;
-    const monthInput = monthPicker.value;
-    if (!monthInput) {
-        showModal('Peringatan', 'Silakan pilih bulan dan tahun terlebih dahulu.');
-        return;
-    }
+    const monthSelect = document.getElementById('manualMonthSelect');
+    const yearSelect = document.getElementById('manualYearSelect');
+    if (!monthSelect || !yearSelect) return;
 
     if (!legendsState || legendsState.length === 0) {
         showModal('Peringatan Tipe Shift', `Project '${activeProject ? activeProject.name : 'Aktif'}' belum memiliki Tipe Shift terdaftar. Silakan tambahkan Tipe Shift terlebih dahulu pada tombol "📋 Tipe Jadwal".`);
         return;
     }
 
-    const [year, month] = monthInput.split('-');
+    const year = yearSelect.value;
+    const month = String(monthSelect.value).padStart(2, '0');
     currentManualYear = year;
     currentManualMonth = month;
     manualDaysCount = new Date(year, month, 0).getDate();
@@ -707,15 +706,11 @@ function initManualGrid() {
             const displayNama = (emp.nama && emp.nama !== '-') ? emp.nama : '';
             addManualRowWithData(emp.nik, displayNama, emp.shifts);
         });
-
-        if (gridBtn) gridBtn.innerHTML = `✏️ Tampilkan & Edit Jadwal (Bulan Ini)`;
     } else {
         // Render 3 empty default rows
         addManualRow();
         addManualRow();
         addManualRow();
-
-        if (gridBtn) gridBtn.innerHTML = `+ Buat Grid Kalender Baru`;
     }
 
     const container = document.getElementById('manualGridContainer');

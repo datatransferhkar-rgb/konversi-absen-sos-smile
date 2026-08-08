@@ -150,7 +150,7 @@
                 </div>
                 <button onclick="closeModalTipeJadwal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                 </button>
             </div>
@@ -229,7 +229,7 @@
                 </div>
                 <button onclick="closeModalInputJadwal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                 </button>
             </div>
@@ -285,14 +285,36 @@
                 </div>
             </div>
 
-            <!-- Sub-Tab 2: Manual Matrix Grid -->
+            <!-- Sub-Tab 2: Manual Matrix Grid (With Safari & Chrome Universal Selects) -->
             <div id="tabContentManual" class="hidden mb-5 space-y-3">
-                <div class="flex flex-wrap gap-3 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <label for="manualMonthPicker" class="text-xs font-bold text-slate-700">Pilih Bulan & Tahun:</label>
-                    <input type="month" id="manualMonthPicker" onchange="initManualGrid()" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500">
-                    <button id="btnBuildManualGrid" onclick="initManualGrid()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-                        + Tampilkan / Buat Grid Kalender
-                    </button>
+                <div class="flex flex-wrap gap-2.5 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <label class="text-xs font-bold text-slate-700">Pilih Bulan & Tahun:</label>
+                    
+                    <!-- Universal Month & Year Dropdowns (100% Identical on Safari & Chrome) -->
+                    <select id="manualMonthSelect" onchange="initManualGrid()" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+
+                    <select id="manualYearSelect" onchange="initManualGrid()" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                        <option value="2029">2029</option>
+                        <option value="2030">2030</option>
+                    </select>
                 </div>
                 
                 <div id="manualGridContainer" class="hidden space-y-3">
